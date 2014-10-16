@@ -1,0 +1,89 @@
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'application'
+
+sourceCompatibility = 1.8
+version = '1.0'
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+
+    all*.exclude group: 'commons-logging', module: 'commons-logging'
+}
+
+task getHomeDir << {
+    println gradle.gradleHomeDir
+}
+
+dependencies {
+    // XXX: All dependencies are dynamic for now. When stabilizing, we should put the specific versions here.
+    testCompile 'junit:junit:+'
+
+    compile 'javax.inject:javax.inject:1'
+    compile 'org.springframework:spring-context:+'
+    compile('com.hazelcast:hazelcast:+') {
+        // Not needed and would introduce a lot of duplicated annotations
+        exclude group: 'net.sourceforge.findbugs'
+    }
+    compile 'com.hazelcast:hazelcast-spring:+'
+    compile 'org.checkerframework:checker-qual:+'
+    compile 'com.google.code.findbugs:jsr305:+'
+    compile 'com.google.guava:guava:+'
+    compile 'org.slf4j:slf4j-api:+'
+    compile 'org.slf4j:jcl-over-slf4j:+'
+    compile 'ch.qos.logback:logback-classic:+'
+    compile 'jline:jline:+'
+    compile 'org.jgrapht:jgrapht-core:+'
+    compile 'com.beust:jcommander:+'
+
+    runtime 'org.codehaus.groovy:groovy-all:+'
+}
+
+task(console, dependsOn: 'classes') << {
+    def classpath = sourceSets.main.runtimeClasspath + configurations.runtime
+
+    def command = [
+            'java',
+            '-cp', classpath.collect().join(System.getProperty('path.separator')),
+            '-Dlogback.configurationFile=org/age/console/logback.groovy',
+            'org.age.console.Bootstrapper',
+    ]
+
+    def proc = new ProcessBuilder(command)
+            .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+            .redirectInput(ProcessBuilder.Redirect.INHERIT)
+            .redirectError(ProcessBuilder.Redirect.INHERIT)
+            .start()
+
+    proc.waitFor()
+
+    if (0 != proc.exitValue()) {
+        throw new RuntimeException("console exited with status: ${proc.exitValue()}")
+    }
+}
+
+/*task console(type: JavaExec) {
+    main = 'org.age.console.Console'
+    classpath = sourceSets.main.runtimeClasspath
+    systemProperty "logback.statusListenerClass", "ch.qos.logback.core.status.OnConsoleStatusListener"
+    systemProperty "logback.configurationFile", "org/age/node/logback.groovy"
+    run {
+        standardInput = System.in
+    }
+}*/
+
+task node(type: JavaExec) {
+    main = 'org.age.node.Bootstrapper'
+    classpath = sourceSets.main.runtimeClasspath
+    systemProperty "logback.configurationFile", "org/age/node/logback.groovy"
+}
+
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
