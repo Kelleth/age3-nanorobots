@@ -3,7 +3,7 @@ apply plugin: 'idea'
 apply plugin: 'application'
 
 sourceCompatibility = 1.8
-version = '1.0'
+version = '1.0.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -14,13 +14,28 @@ configurations {
     all*.exclude group: 'commons-logging', module: 'commons-logging'
 }
 
-task getHomeDir << {
-    println gradle.gradleHomeDir
+test {
+    useTestNG()
+    options {
+        listeners << 'org.uncommons.reportng.HTMLReporter'
+        listeners << 'org.uncommons.reportng.JUnitXMLReporter'
+    }
+    ext.useDefaultListeners = true
 }
+
+//allprojects {
+//    tasks.withType(JavaCompile) {
+//        options.incremental = true
+//    }
+//}
 
 dependencies {
     // XXX: All dependencies are dynamic for now. When stabilizing, we should put the specific versions here.
-    testCompile 'junit:junit:+'
+    testCompile 'org.testng:testng:+'
+    testCompile 'org.mockito:mockito-all:+'
+    testCompile 'org.hamcrest:hamcrest-all:+'
+    testCompile 'org.uncommons:reportng:+'
+    testCompile 'com.google.inject:guice:+'
 
     compile 'javax.inject:javax.inject:1'
     compile 'org.springframework:spring-context:+'
@@ -40,6 +55,10 @@ dependencies {
     compile 'com.beust:jcommander:+'
 
     runtime 'org.codehaus.groovy:groovy-all:+'
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = "2.2-rc-1"
 }
 
 task(console, dependsOn: 'classes') << {
@@ -87,3 +106,5 @@ idea {
         downloadSources = true
     }
 }
+
+mainClassName = 'org.age.node.Bootstrapper'
