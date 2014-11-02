@@ -21,6 +21,9 @@ import jline.console.ConsoleReader;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+/**
+ * Command for getting info about and managing the whole cluster.
+ */
 @Named
 @Parameters(commandNames = "cluster", commandDescription = "Topology management", optionPrefixes = "--")
 public class Cluster implements Command {
@@ -42,9 +45,7 @@ public class Cluster implements Command {
 
 	private void nodes(final PrintWriter printWriter) {
 		final Set<NodeIdentity> neighbours = discoveryService.getMembers();
-		for (final NodeIdentity neighbour : neighbours) {
-			printWriter.println(neighbour);
-		}
+		neighbours.forEach(printWriter::println);
 	}
 
 	@Override

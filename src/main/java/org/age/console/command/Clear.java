@@ -19,6 +19,9 @@ import jline.console.ConsoleReader;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+/**
+ * Command providing clearing of the screen.
+ */
 @Named
 @Parameters(commandNames = "clear", commandDescription = "Clear screen")
 public class Clear implements Command {
@@ -29,7 +32,7 @@ public class Clear implements Command {
 	public boolean execute(final JCommander commander, final ConsoleReader reader, final PrintWriter printWriter) {
 		try {
 			reader.clearScreen();
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			log.error("Reader exception.", e);
 		}
 		return true;

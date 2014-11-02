@@ -15,6 +15,9 @@ import jline.console.ConsoleReader;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+/**
+ * Command for quiting the console.
+ */
 @Named
 @Parameters(commandNames = {"quit", "exit"}, commandDescription = "Quit the console")
 public class Quit implements Command {

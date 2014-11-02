@@ -10,6 +10,7 @@ import java.io.PrintWriter;
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import org.age.annotation.ForTestsOnly;
 import org.age.services.identity.NodeIdentity;
 import org.age.services.identity.NodeIdentityService;
 
@@ -20,6 +21,9 @@ import jline.console.ConsoleReader;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+/**
+ * Command for getting info about the local node.
+ */
 @Named
 @Parameters(commandNames = "local", commandDescription = "Topology management", optionPrefixes = "--")
 public class Local implements Command {
@@ -27,7 +31,6 @@ public class Local implements Command {
 	@Inject private NodeIdentityService identityService;
 
 	@Parameter(names = "--info") private boolean info;
-
 
 	@Override
 	public boolean execute(final JCommander commander, final ConsoleReader reader, final PrintWriter printWriter) {
@@ -49,5 +52,10 @@ public class Local implements Command {
 	@Override
 	public String toString() {
 		return toStringHelper(this).toString();
+	}
+
+	@ForTestsOnly
+	void setInfo(final boolean info) {
+		this.info = info;
 	}
 }

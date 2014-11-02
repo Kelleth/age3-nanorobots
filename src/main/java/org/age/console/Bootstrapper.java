@@ -14,16 +14,18 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import org.age.services.lifecycle.NodeLifecycleService;
 
+/**
+ * Bootstraper for the console.
+ */
 public final class Bootstrapper {
 
 	private static final Logger log = LoggerFactory.getLogger(Bootstrapper.class);
 
-	private Bootstrapper() {
-	}
+	private Bootstrapper() {}
 
 	public static void main(final String... args) {
-
 		NodeLifecycleService lifecycleService = null;
+
 		try (final ConfigurableApplicationContext context = new ClassPathXmlApplicationContext("spring-console.xml")) {
 			lifecycleService = context.getBean(NodeLifecycleService.class);
 			context.registerShutdownHook();
@@ -38,9 +40,10 @@ public final class Bootstrapper {
 			log.info("Finishing.");
 
 			log.debug("Waiting for NodeLifecycleService to terminate.");
-			lifecycleService.awaitTermination();
+			if (lifecycleService != null) {
+				lifecycleService.awaitTermination();
+			}
 		}
 		log.info("Exiting.");
-		System.exit(0);
 	}
 }

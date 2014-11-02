@@ -14,7 +14,7 @@ import javax.inject.Named;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 
-import org.age.services.topology.DefaultTopologyService;
+import org.age.services.topology.TopologyService;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -23,11 +23,14 @@ import jline.console.ConsoleReader;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+/**
+ * Command for getting and configuring topology of the cluster.
+ */
 @Named
 @Parameters(commandNames = "topology", commandDescription = "Topology management", optionPrefixes = "--")
-public class Topology implements Command {
+public class TopologyCommand implements Command {
 
-	@Inject private DefaultTopologyService topologyService;
+	@Inject private TopologyService topologyService;
 
 	@Parameter(names = "--info") private boolean info;
 

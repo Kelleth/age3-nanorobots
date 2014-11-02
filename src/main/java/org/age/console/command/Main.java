@@ -14,6 +14,9 @@ import jline.console.ConsoleReader;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
+/**
+ * Main (empty) command for the console. Provides help for the user.
+ */
 @Parameters(optionPrefixes = "--")
 public class Main implements Command {
 
