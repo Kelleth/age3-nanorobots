@@ -5,7 +5,9 @@
 
 package org.age.services.lifecycle;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -89,7 +91,7 @@ public class NodeLifecycleService implements SmartLifecycle {
 				.commit()
 
 			.ifFailed()
-				.fire(Event.ERROR)
+				.fireAndCall(Event.ERROR, new ExceptionHandler())
 
 			.withEventBus(eventBus)
 			//.notifyWithType(LifecycleStateChangedEvent.class)
@@ -142,5 +144,12 @@ public class NodeLifecycleService implements SmartLifecycle {
 	@Override
 	public int getPhase() {
 		return Integer.MIN_VALUE;
+	}
+
+	private class ExceptionHandler implements Consumer<List<Throwable>> {
+
+		@Override public void accept(final List<Throwable> throwables) {
+
+		}
 	}
 }
