@@ -3,6 +3,7 @@ package org.age.util.fsm;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
@@ -33,6 +34,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Iterables.consumingIterable;
+import static com.google.common.collect.Lists.newArrayListWithExpectedSize;
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
 
@@ -59,6 +61,10 @@ public abstract class StateMachineService<S extends Enum<S>, E extends Enum<E>> 
 	private final Table<S, E, TransitionDescriptor<S, E>> transitionsTable;
 
 	private final E failureEvent;
+
+	private final Consumer<List<Throwable>> exceptionHandler;
+
+	private final List<Throwable> exceptions = newArrayListWithExpectedSize(2);
 
 	private final ListeningScheduledExecutorService service;
 
@@ -88,7 +94,7 @@ public abstract class StateMachineService<S extends Enum<S>, E extends Enum<E>> 
 	 * Package-protected constructor.
 	 * <p>
 	 *
-	 * The proper way to build the service is to use the builder.
+	 * The proper way to build the service is to use the builder {@link StateMachineServiceBuilder}.
 	 *
 	 * @param builder
 	 * 		a builder containing the state machine definition.
@@ -110,7 +116,8 @@ public abstract class StateMachineService<S extends Enum<S>, E extends Enum<E>> 
 		eventCreate = tmpMethod;
 		terminalStates = builder.getTerminalStates();
 		shutdownAfterTerminalState = builder.getShutdownWhenTerminated();
-		failureEvent = builder.getFailureBehaviorBuilder().getEvent();
+		failureEvent = builder.getFailureEvent();
+		exceptionHandler = builder.getExceptionHandler();
 		transitionsTable = builder.buildTransitionsTable();
 		service = listeningDecorator(newSingleThreadScheduledExecutor(
 				new ThreadFactoryBuilder().setNameFormat("fsm-" + name + "-srv-%d").build()));
@@ -238,7 +245,8 @@ public abstract class StateMachineService<S extends Enum<S>, E extends Enum<E>> 
 
 	@Override
 	public String toString() {
-		return withReadLock(() -> toStringHelper(this).add("S", currentState)
+		return withReadLock(() -> toStringHelper(this).addValue(name)
+		                                              .add("S", currentState)
 		                                              .add("E", currentEvent)
 		                                              .add("terminated?", terminated())
 		                                              .toString());
@@ -273,8 +281,8 @@ public abstract class StateMachineService<S extends Enum<S>, E extends Enum<E>> 
 
 				final EventHolder holder;
 				final E event;
+				stateLock.writeLock().lock();
 				try {
-					stateLock.writeLock().lock();
 					try {
 						holder = eventQueue.take();
 					} catch (final InterruptedException e) {
@@ -308,7 +316,7 @@ public abstract class StateMachineService<S extends Enum<S>, E extends Enum<E>> 
 				} finally {
 					holder.getSemaphore().release();
 				}
-			} catch (Throwable t) {
+			} catch (final Throwable t) {
 				log.error("Error", t);
 			}
 		}
@@ -343,6 +351,7 @@ public abstract class StateMachineService<S extends Enum<S>, E extends Enum<E>> 
 		public void onFailure(final TransitionDescriptor<S, E> descriptor, final Throwable t) {
 			log.error("{}: Transition {} failed with exception.", name, descriptor, t);
 			setCurrentEvent(null);
+			exceptions.add(t);
 			fire(failureEvent);
 		}
 	}
@@ -370,9 +379,11 @@ public abstract class StateMachineService<S extends Enum<S>, E extends Enum<E>> 
 		public final int compareTo(final EventHolder o) {
 			if (failureEvent.equals(this.event) && failureEvent.equals(o.event)) {
 				return 0;
-			} else if (failureEvent.equals(this.event) && !failureEvent.equals(o.event)) {
+			}
+			if (failureEvent.equals(this.event) && !failureEvent.equals(o.event)) {
 				return 1;
-			} else if (!failureEvent.equals(this.event) && !failureEvent.equals(o.event)) {
+			}
+			if (!failureEvent.equals(this.event) && !failureEvent.equals(o.event)) {
 				return -1;
 			}
 			return 0;
