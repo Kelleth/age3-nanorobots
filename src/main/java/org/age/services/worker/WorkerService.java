@@ -18,11 +18,14 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
-import org.age.services.topology.DefaultTopologyService;
+import org.age.compute.api.BroadcastMessenger;
+import org.age.services.topology.TopologyService;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.util.concurrent.FutureCallback;
@@ -39,6 +42,8 @@ import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTe
 
 public class WorkerService implements SmartLifecycle {
 
+	public static final String CHANNEL_NAME = "worker/channel";
+
 	private static final Logger log = LoggerFactory.getLogger(WorkerService.class);
 
 	private final AtomicBoolean running = new AtomicBoolean(false);
@@ -48,7 +53,7 @@ public class WorkerService implements SmartLifecycle {
 
 	@MonotonicNonNull @Inject private HazelcastInstance hazelcastInstance;
 
-	@MonotonicNonNull @Inject private DefaultTopologyService topologyService;
+	@Inject private @MonotonicNonNull TopologyService topologyService;
 
 	@MonotonicNonNull private ITopic<WorkerMessage> topic;
 
@@ -62,9 +67,13 @@ public class WorkerService implements SmartLifecycle {
 
 	@Nullable private ListenableScheduledFuture<?> currentTaskFuture;
 
+	@Inject private ApplicationContext applicationContext;
+
+	private BroadcastMessenger broadcastMessenger;
+
 	@PostConstruct
 	public void construct() {
-		topic = hazelcastInstance.getTopic("worker/channel");
+		topic = hazelcastInstance.getTopic(CHANNEL_NAME);
 
 		topic.addMessageListener(new DistributedMessageListener());
 		eventBus.register(this);
@@ -86,6 +95,9 @@ public class WorkerService implements SmartLifecycle {
 		log.debug("Worker service starting.");
 
 		running.set(true);
+
+		// Creating services
+		broadcastMessenger = applicationContext.getBean(BroadcastMessenger.class);
 
 		log.info("Worker service started.");
 	}
@@ -115,16 +127,25 @@ public class WorkerService implements SmartLifecycle {
 	}
 
 	private void setupTask(@NonNull final String className) {
-		log.debug("Setting up task from class {}.", className);
-		currentClassName = className;
+		try {
+			log.debug("Setting up task from class {}.", className);
+			currentClassName = className;
 
-		currentContext = new AnnotationConfigApplicationContext();
-		final BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(className);
-		currentContext.registerBeanDefinition("runnable", builder.getBeanDefinition());
+			currentContext = new AnnotationConfigApplicationContext();
+			final BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(className);
+			currentContext.registerBeanDefinition("runnable", builder.getBeanDefinition());
 
-		currentContext.refresh();
+			// Add services
+			log.info("Broadcast messenger: {}.", broadcastMessenger);
+			currentContext.getBeanFactory().registerSingleton("broadcastMessenger", broadcastMessenger);
+			log.info("{}", currentContext.getBeanFactory().isTypeMatch("broadcastMessenger", BroadcastMessenger.class));
 
-		log.debug("Task set up.");
+			currentContext.refresh();
+
+			log.debug("Task set up.");
+		} catch (final BeanCreationException e) {
+			log.error("Cannot create the task.", e);
+		}
 	}
 
 	private void startTask() {
