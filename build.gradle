@@ -66,6 +66,7 @@ task(console, dependsOn: 'classes') << {
 
     def command = [
             'java',
+            '-enableassertions',
             '-cp', classpath.collect().join(System.getProperty('path.separator')),
             '-Dlogback.configurationFile=org/age/console/logback.groovy',
             'org.age.console.Bootstrapper',
@@ -97,6 +98,7 @@ task(console, dependsOn: 'classes') << {
 task node(type: JavaExec) {
     main = 'org.age.node.Bootstrapper'
     classpath = sourceSets.main.runtimeClasspath
+    jvmArgs '-enableassertions'
     systemProperty "logback.configurationFile", "org/age/node/logback.groovy"
 }
 
