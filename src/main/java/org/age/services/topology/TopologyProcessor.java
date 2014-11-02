@@ -8,6 +8,9 @@ import org.jgrapht.graph.DefaultEdge;
 
 import org.age.services.identity.NodeIdentity;
 
+/**
+ * Topology processor generates a topology graph from the given set of nodes.
+ */
 public interface TopologyProcessor {
 
 	default int getPriority() {
