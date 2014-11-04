@@ -12,6 +12,7 @@ import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
+import javax.inject.Named;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -53,7 +54,7 @@ public class WorkerService implements SmartLifecycle {
 
 	@MonotonicNonNull @Inject private HazelcastInstance hazelcastInstance;
 
-	@Inject private @MonotonicNonNull TopologyService topologyService;
+	@MonotonicNonNull @Inject @Named("default") private TopologyService topologyService;
 
 	@MonotonicNonNull private ITopic<WorkerMessage> topic;
 

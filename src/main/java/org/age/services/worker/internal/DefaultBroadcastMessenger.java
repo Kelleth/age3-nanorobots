@@ -45,7 +45,7 @@ public class DefaultBroadcastMessenger
 
 	@MonotonicNonNull @Inject private HazelcastInstance hazelcastInstance;
 
-	@Inject private @MonotonicNonNull TopologyService topologyService;
+	@MonotonicNonNull @Named("default") @Inject private TopologyService topologyService;
 
 	@MonotonicNonNull @Inject private NodeIdentityService identityService;
 
@@ -62,9 +62,8 @@ public class DefaultBroadcastMessenger
 
 	@Override public void send(@NonNull final Serializable message) {
 		log.debug("Sending message {}.", message);
-		final Set<NodeIdentity> neighbours = topologyService.getNeighbours();
-		final Set<String> recipients = neighbours.stream().map(NodeIdentity::getId).collect(Collectors.toSet());
-		final WorkerMessage workerMessage = WorkerMessage.createWithPayload(Type.COMPUTATION_MESSAGE, recipients,
+		final Set<String> neighbours = topologyService.getNeighbours();
+		final WorkerMessage workerMessage = WorkerMessage.createWithPayload(Type.COMPUTATION_MESSAGE, neighbours,
 		                                                                  message);
 		log.debug("Prepared message to send: {}.", workerMessage);
 		topic.publish(workerMessage);

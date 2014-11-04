@@ -3,7 +3,7 @@
  * $Id$
  */
 
-package org.age.services.topology;
+package org.age.services.topology.processors;
 
 import java.util.Set;
 
@@ -20,17 +20,18 @@ import org.age.services.identity.NodeIdentity;
 import static com.google.common.collect.Sets.cartesianProduct;
 
 @Named
-public final class FullyConnectedTopologyProcessor implements TopologyProcessor {
+public final class FullyConnectedWithLocalLoopsTopologyProcessor implements TopologyProcessor {
 
-	@Override
-	public int getPriority() {
-		return 50;
+	private static final int PRIORITY = 40;
+
+	@Override public int getPriority() {
+		return PRIORITY;
 	}
 
 	@NonNull
 	@Override
 	public String getName() {
-		return "fully connected";
+		return "fully connected with local loops";
 	}
 
 	@NonNull
@@ -41,15 +42,12 @@ public final class FullyConnectedTopologyProcessor implements TopologyProcessor 
 		cartesianProduct(identities, identities).forEach(elem -> {
 			final NodeIdentity id1 = elem.get(0);
 			final NodeIdentity id2 = elem.get(1);
-			if (!id1.equals(id2)) {
-				graph.addEdge(id1.getId(), id2.getId());
-			}
+			graph.addEdge(id1.getId(), id2.getId());
 		});
 		return new UnmodifiableDirectedGraph<>(graph);
 	}
 
-	@Override
-	public String toString() {
+	@Override public String toString() {
 		return getName();
 	}
 }

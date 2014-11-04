@@ -12,16 +12,14 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 
-import org.age.services.identity.NodeIdentity;
-
 public interface TopologyService {
 
 	/**
 	 * Returns a set of neighbours of the current node.
 	 *
-	 * @return set of {@link NodeIdentity}, possibly empty when there is no topology or the node has no neighbours.
+	 * @return set of {@link String}, possibly empty when there is no topology or the node has no neighbours.
 	 */
-	@NonNull Set<NodeIdentity> getNeighbours();
+	@NonNull Set<String> getNeighbours();
 
 	/**
 	 * Returns the current topology graph.

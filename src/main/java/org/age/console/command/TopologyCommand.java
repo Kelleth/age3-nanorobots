@@ -30,7 +30,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 @Parameters(commandNames = "topology", commandDescription = "Topology management", optionPrefixes = "--")
 public class TopologyCommand implements Command {
 
-	@Inject private TopologyService topologyService;
+	@Inject @Named("non-participating") private TopologyService topologyService;
 
 	@Parameter(names = "--info") private boolean info;
 

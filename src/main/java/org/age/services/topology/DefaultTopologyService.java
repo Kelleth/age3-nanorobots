@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.emptySet;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
@@ -32,6 +33,7 @@ import org.age.services.discovery.DiscoveryEvent;
 import org.age.services.discovery.HazelcastDiscoveryService;
 import org.age.services.identity.NodeIdentity;
 import org.age.services.identity.NodeIdentityService;
+import org.age.services.topology.processors.TopologyProcessor;
 import org.age.util.fsm.FSM;
 import org.age.util.fsm.StateMachineService;
 import org.age.util.fsm.StateMachineServiceBuilder;
@@ -55,7 +57,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
 
-@Named
+@Named("default")
 public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 
 	public static final String CONFIG_MAP_NAME = "topology/config";
@@ -172,9 +174,6 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 		// Obtain dependencies
 		runtimeConfig = hazelcastInstance.getMap(CONFIG_MAP_NAME);
 		topic = hazelcastInstance.getTopic(CHANNEL_NAME);
-
-		topic.addMessageListener(new DistributedMessageListener());
-		eventBus.register(this);
 	}
 
 	@Override public boolean isAutoStartup() {
@@ -202,19 +201,15 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 		return 0;
 	}
 
-	@Override @NonNull public Set<NodeIdentity> getNeighbours() {
-		if (!service.inState(State.WITH_TOPOLOGY)) {
-			return emptySet();
-		}
-
-		// FIXME:
-		return null;
-	}
-
 	private void internalStart(@NonNull final FSM<State, Event> fsm) {
 		log.debug("Topology service starting.");
 		log.debug("Known topologies: {}.", topologyProcessors);
 		assert !topologyProcessors.isEmpty() : "No topology processors.";
+		assert identityService.isCompute() : "This implementation is only for compute nodes.";
+
+		topic.addMessageListener(new DistributedMessageListener());
+		eventBus.register(this);
+		
 		log.info("Topology service started.");
 		service.fire(Event.STARTED);
 	}
@@ -342,6 +337,17 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 
 	@Override @NonNull public Optional<String> getTopologyType() {
 		return Optional.ofNullable((String)runtimeConfig.get(ConfigKeys.TOPOLOGY_TYPE));
+	}
+
+	@Override @NonNull public Set<String> getNeighbours() {
+		if (!service.inState(State.WITH_TOPOLOGY)) {
+			return emptySet();
+		}
+
+		final DirectedGraph<String, DefaultEdge> graph = getCurrentTopologyGraph();
+		final Set<DefaultEdge> outEdges = graph.outgoingEdgesOf(identityService.getNodeId());
+		final Set<String> neighbours = outEdges.stream().map(graph::getEdgeTarget).collect(Collectors.toSet());
+		return neighbours;
 	}
 
 	@Subscribe public void membershipChange(final DiscoveryEvent event) {
