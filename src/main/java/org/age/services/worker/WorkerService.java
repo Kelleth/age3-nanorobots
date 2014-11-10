@@ -5,28 +5,28 @@
 
 package org.age.services.worker;
 
+import static com.google.common.collect.Maps.newEnumMap;
+import static com.google.common.collect.Sets.newHashSet;
+import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
+import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
+import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.Executors.newScheduledThreadPool;
+
+import org.age.services.identity.NodeIdentityService;
+import org.age.services.worker.internal.CommunicationFacility;
+import org.age.services.worker.internal.WorkerCommunication;
+
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
-import javax.inject.Named;
-
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.BeanCreationException;
-import org.springframework.beans.factory.support.BeanDefinitionBuilder;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.SmartLifecycle;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-
-import org.age.compute.api.BroadcastMessenger;
-import org.age.services.topology.TopologyService;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.util.concurrent.FutureCallback;
@@ -38,10 +38,20 @@ import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
 
-import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
-import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
+import org.checkerframework.checker.lock.qual.GuardedBy;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.SmartLifecycle;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
-public class WorkerService implements SmartLifecycle {
+public class WorkerService implements SmartLifecycle, WorkerCommunication {
 
 	public static final String CHANNEL_NAME = "worker/channel";
 
@@ -49,156 +59,229 @@ public class WorkerService implements SmartLifecycle {
 
 	private final AtomicBoolean running = new AtomicBoolean(false);
 
-	private final ListeningScheduledExecutorService executorService = listeningDecorator(
-			newSingleThreadScheduledExecutor());
+	private final ListeningScheduledExecutorService executorService = listeningDecorator(newScheduledThreadPool(5));
+
+	private final Map<WorkerMessage.Type, Set<CommunicationFacility>> workerMessageListeners = newEnumMap(
+			WorkerMessage.Type.class);
+
+	private final Set<CommunicationFacility> communicationFacilities = newHashSet();
+
+	private final ReadWriteLock taskLock = new ReentrantReadWriteLock();
 
 	@MonotonicNonNull @Inject private HazelcastInstance hazelcastInstance;
 
-	@MonotonicNonNull @Inject @Named("default") private TopologyService topologyService;
-
-	@MonotonicNonNull private ITopic<WorkerMessage> topic;
+	@MonotonicNonNull @Inject private NodeIdentityService identityService;
 
 	@MonotonicNonNull @Inject private EventBus eventBus;
 
-	@Nullable private String currentClassName;
+	@MonotonicNonNull @Inject private ApplicationContext applicationContext;
 
-	@Nullable private Runnable currentTask;
+	@MonotonicNonNull private ITopic<WorkerMessage<Serializable>> topic;
 
-	@Nullable private AnnotationConfigApplicationContext currentContext;
+	@GuardedBy("taskLock") @Nullable private String currentClassName;
 
-	@Nullable private ListenableScheduledFuture<?> currentTaskFuture;
+	@GuardedBy("taskLock") @Nullable private Runnable currentTask;
 
-	@Inject private ApplicationContext applicationContext;
+	@GuardedBy("taskLock") @Nullable private AnnotationConfigApplicationContext currentContext;
 
-	private BroadcastMessenger broadcastMessenger;
+	@GuardedBy("taskLock") @Nullable private ListenableScheduledFuture<?> currentTaskFuture;
 
-	@PostConstruct
-	public void construct() {
+	protected WorkerService() {
+		Arrays.stream(WorkerMessage.Type.values()).forEach(type -> workerMessageListeners.put(type, newHashSet()));
+	}
+
+	@PostConstruct private void construct() {
 		topic = hazelcastInstance.getTopic(CHANNEL_NAME);
-
 		topic.addMessageListener(new DistributedMessageListener());
 		eventBus.register(this);
 	}
 
-	@Override
-	public boolean isAutoStartup() {
+	@Override public final boolean isAutoStartup() {
 		return true;
 	}
 
-	@Override
-	public void stop(final Runnable callback) {
+	@Override public final void stop(final Runnable callback) {
 		stop();
 		callback.run();
 	}
 
-	@Override
-	public void start() {
+	@Override public final void start() {
 		log.debug("Worker service starting.");
 
 		running.set(true);
 
-		// Creating services
-		broadcastMessenger = applicationContext.getBean(BroadcastMessenger.class);
-
 		log.info("Worker service started.");
 	}
 
-	@Override
-	public void stop() {
+	@Override public final void stop() {
 		log.debug("Worker service stopping.");
 
 		running.set(false);
-		shutdownAndAwaitTermination(executorService, 10, TimeUnit.SECONDS);
+		shutdownAndAwaitTermination(executorService, 10L, TimeUnit.SECONDS);
 
 		log.info("Worker service stopped.");
 	}
 
-	@Override
-	public boolean isRunning() {
+	@Override public final boolean isRunning() {
 		return running.get();
 	}
 
-	@Override
-	public int getPhase() {
+	@Override public final int getPhase() {
 		return Integer.MAX_VALUE;
 	}
 
+	@Override public void sendMessage(@NonNull final WorkerMessage<Serializable> message) {
+		log.debug("Sending message {}.", message);
+		topic.publish(message);
+	}
+
+	@Override public ListenableScheduledFuture<?> scheduleAtFixedRate(final Runnable command, final long initialDelay,
+	                                                                  final long period, final TimeUnit unit) {
+		return executorService.scheduleAtFixedRate(command, initialDelay, period, unit);
+	}
+
+	public boolean isSetUp() {
+		return currentClassName != null;
+	}
+
 	public boolean isTaskRunning() {
-		return currentTaskFuture != null && !currentTaskFuture.isDone();
+		return (currentTaskFuture != null) && !currentTaskFuture.isDone();
 	}
 
 	private void setupTask(@NonNull final String className) {
+		assert className != null;
+		assert !isTaskRunning() : "Task is already running.";
+
+		taskLock.writeLock().lock();
 		try {
 			log.debug("Setting up task from class {}.", className);
+
+			log.debug("Creating internal Spring context.");
+			final AnnotationConfigApplicationContext taskContext = new AnnotationConfigApplicationContext();
+
+			// Configure task
+			final BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(className);
+			taskContext.registerBeanDefinition("runnable", builder.getBeanDefinition());
+
+			// Configure communication facilities (as singletons)
+			final ConfigurableListableBeanFactory beanFactory = taskContext.getBeanFactory();
+			final Map<String, CommunicationFacility> facilitiesMap = applicationContext.getBeansOfType(
+					CommunicationFacility.class);
+			communicationFacilities.addAll(facilitiesMap.values());
+			// Add services
+			log.debug("Registering facilities and adding them as listeners for messages.");
+			communicationFacilities.forEach(service -> {
+				service.subscribedTypes().forEach(key -> workerMessageListeners.get(key).add(service));
+				log.debug("Registering {} as {} in application context.", service.getClass().getSimpleName(), service);
+				beanFactory.registerSingleton(service.getClass().getSimpleName(), service);
+			});
+
+			// Refreshing the context
+			taskContext.refresh();
+			currentContext = taskContext;
 			currentClassName = className;
 
-			currentContext = new AnnotationConfigApplicationContext();
-			final BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(className);
-			currentContext.registerBeanDefinition("runnable", builder.getBeanDefinition());
-
-			// Add services
-			log.info("Broadcast messenger: {}.", broadcastMessenger);
-			currentContext.getBeanFactory().registerSingleton("broadcastMessenger", broadcastMessenger);
-			log.info("{}", currentContext.getBeanFactory().isTypeMatch("broadcastMessenger", BroadcastMessenger.class));
-
-			currentContext.refresh();
-
-			log.debug("Task set up.");
+			log.debug("Task setup finished.");
 		} catch (final BeanCreationException e) {
 			log.error("Cannot create the task.", e);
+			cleanUpAfterTask();
+		} finally {
+			taskLock.writeLock().unlock();
 		}
 	}
 
 	private void startTask() {
+		assert (currentClassName != null) && (currentContext != null);
+
 		log.debug("Starting task from class {}.", currentClassName);
 
-		currentContext.start();
-		currentTask = (Runnable)currentContext.getBean("runnable");
+		taskLock.writeLock().lock();
+		try {
+			currentContext.start();
+			currentTask = (Runnable)currentContext.getBean("runnable");
 
-		log.info("Starting execution of {}.", currentTask);
+			log.info("Starting execution of {}.", currentTask);
 
-		currentTaskFuture = executorService.schedule(currentTask, 0, TimeUnit.SECONDS);
-		Futures.addCallback(currentTaskFuture, new ExecutionListener());
+			currentTaskFuture = executorService.schedule(currentTask, 0L, TimeUnit.SECONDS);
+			Futures.addCallback(currentTaskFuture, new ExecutionListener());
+		} finally {
+			taskLock.writeLock().unlock();
+		}
 	}
 
 	private void cleanUpAfterTask() {
 		log.debug("Cleaning up after task {}.", currentTask);
-		currentClassName = null;
-		currentTaskFuture = null;
-		currentTask = null;
+		taskLock.writeLock().lock();
+		try {
+			currentClassName = null;
+			currentTaskFuture = null;
+			currentTask = null;
 
-		currentContext.stop();
-		currentContext.close();
+			if (currentContext != null) {
+				currentContext.stop();
+				currentContext.close();
+				currentContext = null;
+			}
+		} finally {
+			taskLock.writeLock().unlock();
+		}
+		log.debug("Clean up finished.");
 	}
 
-	private class DistributedMessageListener implements MessageListener<WorkerMessage> {
-		@Override
-		public void onMessage(final Message<WorkerMessage> message) {
-			final WorkerMessage messageObject = message.getMessageObject();
-			log.debug("WorkerMessage received: {}.", messageObject);
 
-			switch (messageObject.getType()) {
-				case LOAD_CLASS:
-					final String className = (String)messageObject.getPayload().get();
-					setupTask(className);
-					startTask();
-					break;
+	private final class DistributedMessageListener implements MessageListener<WorkerMessage<Serializable>> {
+
+		@Override public void onMessage(final Message<WorkerMessage<Serializable>> message) {
+			final WorkerMessage<Serializable> workerMessage = requireNonNull(message.getMessageObject());
+			log.debug("WorkerMessage received: {}.", workerMessage);
+
+			try {
+				if (!workerMessage.isRecipient(identityService.nodeId())) {
+					log.debug("Message {} was not directed to me.", workerMessage);
+					return;
+				}
+
+				final WorkerMessage.Type type = workerMessage.type();
+				final Set<CommunicationFacility> listeners = workerMessageListeners.get(type);
+				boolean eaten = false;
+				for (final CommunicationFacility listener : listeners) {
+					log.debug("Notifying listener {}.", listener);
+					if (listener.onMessage(workerMessage)) {
+						eaten = true;
+						break;
+					}
+				}
+
+				if (eaten) {
+					return;
+				}
+
+				switch (workerMessage.type()) {
+					case LOAD_CLASS:
+						final String className = workerMessage.requiredPayload();
+						setupTask(className);
+						break;
+					case START_COMPUTATION:
+						startTask();
+						break;
+				}
+			} catch (Throwable t) {
+				log.info("T", t);
 			}
 		}
 	}
 
-	private class ExecutionListener implements FutureCallback<Object> {
+	private final class ExecutionListener implements FutureCallback<Object> {
 
-		@Override
-		public void onSuccess(final Object result) {
+		@Override public void onSuccess(final Object result) {
 			log.info("Task {} finished.", currentTask);
 			cleanUpAfterTask();
 		}
 
-		@Override
-		public void onFailure(final Throwable t) {
+		@Override public void onFailure(final Throwable t) {
 			log.error("Task {} failed with error.", currentTask, t);
 			cleanUpAfterTask();
 		}
 	}
+
 }

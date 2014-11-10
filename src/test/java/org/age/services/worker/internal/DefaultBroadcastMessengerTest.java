@@ -36,17 +36,14 @@ public class DefaultBroadcastMessengerTest {
 
 	@Mock private TopologyService topologyService;
 
-	@Mock private NodeIdentityService identityService;
-
-	@Mock private ITopic<WorkerMessage> topic;
+	@Mock private WorkerCommunication workerCommunication;
 
 	@InjectMocks private DefaultBroadcastMessenger messenger;
 
 	@BeforeMethod public void setUp() {
 		MockitoAnnotations.initMocks(this);
 
-		when(identityService.getNodeId()).thenReturn(NODE1_ID);
-		when(topologyService.getNeighbours()).thenReturn(ImmutableSet.of(NODE2_ID, NODE3_ID));
+		when(topologyService.neighbours()).thenReturn(ImmutableSet.of(NODE2_ID, NODE3_ID));
 	}
 
 	@Test public void testSend() {
@@ -54,10 +51,10 @@ public class DefaultBroadcastMessengerTest {
 
 		messenger.send(MESSAGE);
 
-		verify(topic).publish(captor.capture());
-		verifyNoMoreInteractions(topic);
+		verify(workerCommunication).sendMessage(captor.capture());
+		verifyNoMoreInteractions(workerCommunication);
 		final WorkerMessage value = captor.getValue();
-		assertThat(value.getType(), is(equalTo(Type.COMPUTATION_MESSAGE)));
-		assertThat(value.getPayload().get(), is(equalTo(MESSAGE)));
+		assertThat(value.type(), is(equalTo(Type.BROADCAST_MESSAGE)));
+		assertThat(value.payload().get(), is(equalTo(MESSAGE)));
 	}
 }
