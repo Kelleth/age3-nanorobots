@@ -1,6 +1,5 @@
 /*
  * Created: 2014-10-27
- * $Id$
  */
 
 package org.age.compute.api;
