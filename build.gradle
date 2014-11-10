@@ -36,6 +36,8 @@ dependencies {
     testCompile 'org.mockito:mockito-all:+'
     testCompile 'org.uncommons:reportng:+'
     testCompile 'com.google.inject:guice:+'
+    testCompile 'org.assertj:assertj-core:+'
+    testCompile 'org.assertj:assertj-guava:+'
 
     compile 'javax.inject:javax.inject:1'
     compile 'org.springframework:spring-context:+'
