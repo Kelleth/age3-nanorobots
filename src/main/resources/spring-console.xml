@@ -12,6 +12,7 @@
 		<hz:config>
 			<hz:properties>
 				<hz:property name="hazelcast.logging.type">slf4j</hz:property>
+				<!-- Let spring handle the shutdown. -->
 				<hz:property name="hazelcast.shutdownhook.enabled">false</hz:property>
 			</hz:properties>
 			<hz:map name="neighbourhood"/>
@@ -19,7 +20,9 @@
 
 	</hz:hazelcast>
 
-	<context:component-scan base-package="org.age"/>
+	<context:component-scan base-package="org.age">
+		<context:exclude-filter type="regex" expression="org\.age\.services\.worker\..*"/>
+	</context:component-scan>
 
 	<bean id="eventBus"
 	      class="com.google.common.eventbus.EventBus"/>
