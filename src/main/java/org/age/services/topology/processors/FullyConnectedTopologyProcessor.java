@@ -38,12 +38,12 @@ public final class FullyConnectedTopologyProcessor implements TopologyProcessor 
 	@Override
 	public DirectedGraph<String, DefaultEdge> getGraph(@NonNull final Set<NodeIdentity> identities) {
 		final DefaultDirectedGraph<String, DefaultEdge> graph = new DefaultDirectedGraph<>(DefaultEdge.class);
-		identities.forEach(identity -> graph.addVertex(identity.getId()));
+		identities.forEach(identity -> graph.addVertex(identity.id()));
 		cartesianProduct(identities, identities).forEach(elem -> {
 			final NodeIdentity id1 = elem.get(0);
 			final NodeIdentity id2 = elem.get(1);
 			if (!id1.equals(id2)) {
-				graph.addEdge(id1.getId(), id2.getId());
+				graph.addEdge(id1.id(), id2.id());
 			}
 		});
 		return new UnmodifiableDirectedGraph<>(graph);

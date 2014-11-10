@@ -18,17 +18,22 @@ public interface TopologyService {
 	 * Returns a set of neighbours of the current node.
 	 *
 	 * @return set of {@link String}, possibly empty when there is no topology or the node has no neighbours.
+	 *
+	 * @throws IllegalStateException
+	 * 		when the topology cannot get the list of neighbours because it has not finished discovery.
 	 */
-	@NonNull Set<String> getNeighbours();
+	@NonNull Set<String> neighbours();
 
 	/**
 	 * Returns the current topology graph.
 	 *
 	 * @return an Optional containing the topology graph or empty when no topology was set.
 	 */
-	@NonNull Optional<DirectedGraph<String, DefaultEdge>> getTopology();
+	@NonNull Optional<DirectedGraph<String, DefaultEdge>> topologyGraph();
 
-	@NonNull Optional<String> getTopologyType();
+	@NonNull Optional<String> topologyType();
 
-	@NonNull Optional<String> getMasterId();
+	@NonNull Optional<String> masterId();
+
+	boolean hasTopology();
 }

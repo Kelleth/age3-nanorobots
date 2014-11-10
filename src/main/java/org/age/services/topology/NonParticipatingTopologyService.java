@@ -58,19 +58,23 @@ public class NonParticipatingTopologyService implements TopologyService {
 		eventBus.register(this);
 	}
 
-	@Override @NonNull public Set<String> getNeighbours() {
+	@Override @NonNull public Set<String> neighbours() {
 		throw new UnsupportedOperationException("Neighbourhood not available for this implementation.");
 	}
 
-	@Override @NonNull public Optional<String> getMasterId() {
+	@Override @NonNull public Optional<String> masterId() {
 		return Optional.ofNullable((String)runtimeConfig.get(ConfigKeys.MASTER));
 	}
 
-	@Override @NonNull public Optional<DirectedGraph<String, DefaultEdge>> getTopology() {
+	@Override public boolean hasTopology() {
+		return false;
+	}
+
+	@Override @NonNull public Optional<DirectedGraph<String, DefaultEdge>> topologyGraph() {
 		return Optional.ofNullable((DirectedGraph<String, DefaultEdge>)runtimeConfig.get(ConfigKeys.TOPOLOGY_GRAPH));
 	}
 
-	@Override @NonNull public Optional<String> getTopologyType() {
+	@Override @NonNull public Optional<String> topologyType() {
 		return Optional.ofNullable((String)runtimeConfig.get(ConfigKeys.TOPOLOGY_TYPE));
 	}
 

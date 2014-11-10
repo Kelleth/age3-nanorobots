@@ -44,9 +44,9 @@ public final class RingTopologyProcessor implements TopologyProcessor {
 	@Override
 	public DirectedGraph<String, DefaultEdge> getGraph(@NonNull final Set<NodeIdentity> identities) {
 		final DefaultDirectedGraph<String, DefaultEdge> graph = new DefaultDirectedGraph<>(DefaultEdge.class);
-		identities.forEach(identity -> graph.addVertex(identity.getId()));
+		identities.forEach(identity -> graph.addVertex(identity.id()));
 
-		final List<String> sortedIds = identities.stream().map(NodeIdentity::getId).sorted().collect(Collectors.toList());
+		final List<String> sortedIds = identities.stream().map(NodeIdentity::id).sorted().collect(Collectors.toList());
 		sortedIds.stream().reduce(getLast(sortedIds), (nodeIdentity1, nodeIdentity2) -> {
 			graph.addEdge(nodeIdentity1, nodeIdentity2);
 			return nodeIdentity2;

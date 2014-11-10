@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static java.util.Collections.emptySet;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
 import javax.annotation.PostConstruct;
@@ -236,15 +235,15 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 
 		final Set<@NonNull NodeIdentity> computeNodes = getComputeNodes();
 		final Optional<NodeIdentity> maxIdentity = computeNodes.parallelStream()
-		                                                       .max(Comparator.comparing(NodeIdentity::getId));
+		                                                       .max(Comparator.comparing(NodeIdentity::id));
 		log.debug("Max identity is {}.", maxIdentity);
 
 		assert maxIdentity.isPresent();
 
-		if (identityService.getNodeId().equals(maxIdentity.get().getId())) {
+		if (identityService.nodeId().equals(maxIdentity.get().id())) {
 			log.debug("I am master.");
 			master = true;
-			runtimeConfig.put(ConfigKeys.MASTER, identityService.getNodeId());
+			runtimeConfig.put(ConfigKeys.MASTER, identityService.nodeId());
 
 			// Select initial topology type if this is the first election
 			if (!runtimeConfig.containsKey(ConfigKeys.TOPOLOGY_TYPE)) {
@@ -290,7 +289,7 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 		assert master;
 		log.debug("Topology initialization.");
 
-		final String processorName = getTopologyType().get();
+		final String processorName = topologyType().get();
 		log.debug("Processor name: {}.", processorName);
 
 		final Optional<TopologyProcessor> topologyProcessor = getTopologyProcessorWithName(processorName);
@@ -327,27 +326,30 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 	}
 
 
-	@Override @NonNull public Optional<String> getMasterId() {
+	@Override @NonNull public Optional<String> masterId() {
 		return Optional.ofNullable((String)runtimeConfig.get(ConfigKeys.MASTER));
 	}
 
-	@Override @NonNull public Optional<DirectedGraph<String, DefaultEdge>> getTopology() {
+	@Override public boolean hasTopology() {
+		return service.inState(State.WITH_TOPOLOGY);
+	}
+
+	@Override @NonNull public Optional<DirectedGraph<String, DefaultEdge>> topologyGraph() {
 		return Optional.ofNullable(cachedTopology);
 	}
 
-	@Override @NonNull public Optional<String> getTopologyType() {
+	@Override @NonNull public Optional<String> topologyType() {
 		return Optional.ofNullable((String)runtimeConfig.get(ConfigKeys.TOPOLOGY_TYPE));
 	}
 
-	@Override @NonNull public Set<String> getNeighbours() {
-		if (!service.inState(State.WITH_TOPOLOGY)) {
-			return emptySet();
+	@Override @NonNull public Set<String> neighbours() {
+		if (!hasTopology()) {
+			throw new IllegalStateException("Topology not ready.");
 		}
 
 		final DirectedGraph<String, DefaultEdge> graph = getCurrentTopologyGraph();
-		final Set<DefaultEdge> outEdges = graph.outgoingEdgesOf(identityService.getNodeId());
-		final Set<String> neighbours = outEdges.stream().map(graph::getEdgeTarget).collect(Collectors.toSet());
-		return neighbours;
+		final Set<DefaultEdge> outEdges = graph.outgoingEdgesOf(identityService.nodeId());
+		return outEdges.stream().map(graph::getEdgeTarget).collect(Collectors.toSet());
 	}
 
 	@Subscribe public void membershipChange(final DiscoveryEvent event) {

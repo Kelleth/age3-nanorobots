@@ -32,7 +32,7 @@ public class FullyConnectedWithLocalLoopsTopologyProcessorTest {
 	@Test public void testSingleNode() {
 		final String nodeId = "1";
 		final NodeIdentity nodeIdentity = mock(NodeIdentity.class);
-		when(nodeIdentity.getId()).thenReturn(nodeId);
+		when(nodeIdentity.id()).thenReturn(nodeId);
 		final ImmutableSet<NodeIdentity> identities = ImmutableSet.of(nodeIdentity);
 
 		final DirectedGraph<String, DefaultEdge> graph = processor.getGraph(identities);
@@ -48,8 +48,8 @@ public class FullyConnectedWithLocalLoopsTopologyProcessorTest {
 		final String node2Id = "2";
 		final NodeIdentity node1Identity = mock(NodeIdentity.class);
 		final NodeIdentity node2Identity = mock(NodeIdentity.class);
-		when(node1Identity.getId()).thenReturn(node1Id);
-		when(node2Identity.getId()).thenReturn(node2Id);
+		when(node1Identity.id()).thenReturn(node1Id);
+		when(node2Identity.id()).thenReturn(node2Id);
 		final ImmutableSet<NodeIdentity> identities = ImmutableSet.of(node1Identity, node2Identity);
 
 		final DirectedGraph<String, DefaultEdge> graph = processor.getGraph(identities);
