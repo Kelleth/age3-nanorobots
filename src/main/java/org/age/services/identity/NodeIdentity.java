@@ -5,16 +5,15 @@
 
 package org.age.services.identity;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static java.util.Objects.requireNonNull;
+
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Set;
 
-import static java.util.Objects.requireNonNull;
-
 import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.NonNull;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 @Immutable
 public class NodeIdentity implements Serializable {
@@ -32,23 +31,23 @@ public class NodeIdentity implements Serializable {
 		this.services = requireNonNull(services);
 	}
 
-	public Set<@NonNull String> getServices() {
+	public Set<@NonNull String> services() {
 		return services;
 	}
 
 	@NonNull
-	public String getId() {
+	public String id() {
 		return id;
 	}
 
 	@NonNull
-	public NodeType getType() {
+	public NodeType type() {
 		return type;
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(this.id, this.type);
+		return Objects.hash(id, type);
 	}
 
 	@Override

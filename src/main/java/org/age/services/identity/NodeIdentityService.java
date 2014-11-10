@@ -5,66 +5,67 @@
 
 package org.age.services.identity;
 
+import static com.google.common.collect.Sets.newHashSet;
+import static java.util.Objects.requireNonNull;
+
+import org.age.services.worker.WorkerService;
+
 import java.util.Set;
 import java.util.UUID;
 
-import static java.util.Objects.requireNonNull;
-
 import javax.annotation.PostConstruct;
+import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.springframework.beans.BeansException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-
-import org.age.services.worker.WorkerService;
-
-import static com.google.common.collect.Sets.newHashSet;
 
 @Named
-public class NodeIdentityService implements ApplicationContextAware {
+public class NodeIdentityService {
+
+	private static final Logger log = LoggerFactory.getLogger(NodeIdentityService.class);
 
 	private final UUID nodeId = UUID.randomUUID();
 
+	private final String encodedNodeId = nodeId.toString();
+
 	@NonNull private NodeType nodeType = NodeType.UNKNOWN;
 
-	@MonotonicNonNull private ApplicationContext applicationContext;
+	@Inject @MonotonicNonNull private ApplicationContext applicationContext;
 
-	@PostConstruct
-	void construct() {
+	@PostConstruct private void construct() {
+		log.debug("Constructing identity service.");
 		try {
 			applicationContext.getBean(WorkerService.class);
 			nodeType = NodeType.COMPUTE;
 		} catch (final NoSuchBeanDefinitionException ignored) {
 			nodeType = NodeType.SATELLITE;
 		}
-	}
-
-	@Override
-	public void setApplicationContext(@NonNull final ApplicationContext applicationContext) throws BeansException {
-		this.applicationContext = applicationContext;
+		log.info("Node type: {}.", nodeType);
+		log.info("Node id: {}.", nodeId);
 	}
 
 	@NonNull
-	public String getNodeId() {
+	public String nodeId() {
 		return nodeId.toString();
 	}
 
 	@NonNull
-	public NodeType getNodeType() {
+	public NodeType nodeType() {
 		return nodeType;
 	}
 
 	@NonNull
-	public NodeIdentity getNodeIdentity() {
-		return new NodeIdentity(nodeId.toString(), nodeType, getServices());
+	public NodeIdentity nodeIdentity() {
+		return new NodeIdentity(encodedNodeId, nodeType, services());
 	}
 
 	@NonNull
-	public Set<String> getServices() {
+	public Set<String> services() {
 		return newHashSet();
 	}
 
@@ -72,7 +73,7 @@ public class NodeIdentityService implements ApplicationContextAware {
 		return is(NodeType.COMPUTE);
 	}
 
-	public boolean is(@NonNull NodeType nodeType) {
-		return nodeType.equals(requireNonNull(nodeType));
+	public boolean is(@NonNull final NodeType type) {
+		return nodeType == requireNonNull(type);
 	}
 }
