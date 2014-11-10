@@ -1,6 +1,18 @@
 package org.age.services.worker.internal;
 
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+import org.age.services.topology.TopologyService;
+import org.age.services.worker.WorkerMessage;
+import org.age.services.worker.WorkerMessage.Type;
+
 import java.io.Serializable;
+
+import com.google.common.collect.ImmutableSet;
 
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -9,22 +21,7 @@ import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.is;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-
-import org.age.services.identity.NodeIdentityService;
-import org.age.services.topology.TopologyService;
-import org.age.services.worker.WorkerMessage;
-import org.age.services.worker.WorkerMessage.Type;
-
-import com.google.common.collect.ImmutableSet;
-import com.hazelcast.core.ITopic;
-
-public class DefaultBroadcastMessengerTest {
+public final class DefaultBroadcastMessengerTest {
 
 	private static final String NODE1_ID = "1";
 
@@ -54,7 +51,7 @@ public class DefaultBroadcastMessengerTest {
 		verify(workerCommunication).sendMessage(captor.capture());
 		verifyNoMoreInteractions(workerCommunication);
 		final WorkerMessage value = captor.getValue();
-		assertThat(value.type(), is(equalTo(Type.BROADCAST_MESSAGE)));
-		assertThat(value.payload().get(), is(equalTo(MESSAGE)));
+		assertThat(value.type()).isEqualTo(Type.BROADCAST_MESSAGE);
+		assertThat(value.payload().get()).isEqualTo(MESSAGE);
 	}
 }

@@ -2,17 +2,14 @@ package org.age.services.worker;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.testng.Assert.*;
 
 import java.io.Serializable;
 
 import com.google.common.collect.ImmutableSet;
 
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-public class WorkerMessageTest {
+public final class WorkerMessageTest {
 
 	private static final String RECEIVER = "receiver";
 

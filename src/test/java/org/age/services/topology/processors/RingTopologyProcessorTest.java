@@ -1,34 +1,29 @@
 package org.age.services.topology.processors;
 
+import static com.google.common.collect.Iterables.getOnlyElement;
+import static com.google.common.collect.Maps.toMap;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import org.age.services.identity.NodeIdentity;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
+
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+public final class RingTopologyProcessorTest {
 
-import org.age.services.identity.NodeIdentity;
-
-import com.google.common.collect.ImmutableSet;
-
-import static com.google.common.collect.Iterables.getOnlyElement;
-import static com.google.common.collect.Maps.toMap;
-
-public class RingTopologyProcessorTest {
-
-	private RingTopologyProcessor processor;
+	@Nullable private RingTopologyProcessor processor;
 
 	@BeforeMethod public void setUp() {
 		processor = new RingTopologyProcessor();
@@ -46,10 +41,10 @@ public class RingTopologyProcessorTest {
 
 		final DirectedGraph<String, DefaultEdge> graph = processor.getGraph(identities);
 
-		assertThat(graph.containsVertex(nodeId), is(true));
-		assertThat(graph.inDegreeOf(nodeId), is(equalTo(1)));
-		assertThat(graph.outDegreeOf(nodeId), is(equalTo(1)));
-		assertThat(graph.getEdge(nodeId, nodeId), is(notNullValue()));
+		assertThat(graph.containsVertex(nodeId)).isTrue();
+		assertThat(graph.inDegreeOf(nodeId)).isEqualTo(1);
+		assertThat(graph.outDegreeOf(nodeId)).isEqualTo(1);
+		assertThat(graph.getEdge(nodeId, nodeId)).isNotNull();
 	}
 
 	@Test public void testTwoNodes() {
@@ -63,24 +58,22 @@ public class RingTopologyProcessorTest {
 
 		final DirectedGraph<String, DefaultEdge> graph = processor.getGraph(identities);
 
-		assertThat(graph.containsVertex(node1Id), is(true));
-		assertThat(graph.inDegreeOf(node1Id), is(equalTo(1)));
-		assertThat(graph.outDegreeOf(node1Id), is(equalTo(1)));
+		assertThat(graph.containsVertex(node1Id)).isTrue();
+		assertThat(graph.inDegreeOf(node1Id)).isEqualTo(1);
+		assertThat(graph.outDegreeOf(node1Id)).isEqualTo(1);
 
-		assertThat(graph.containsVertex(node2Id), is(true));
-		assertThat(graph.inDegreeOf(node2Id), is(equalTo(1)));
-		assertThat(graph.outDegreeOf(node2Id), is(equalTo(1)));
+		assertThat(graph.containsVertex(node2Id)).isTrue();
+		assertThat(graph.inDegreeOf(node2Id)).isEqualTo(1);
+		assertThat(graph.outDegreeOf(node2Id)).isEqualTo(1);
 
-		assertThat(graph.getEdge(node1Id, node1Id), is(nullValue()));
-		assertThat(graph.getEdge(node1Id, node2Id), is(notNullValue()));
-		assertThat(graph.getEdge(node2Id, node1Id), is(notNullValue()));
-		assertThat(graph.getEdge(node2Id, node2Id), is(nullValue()));
+		assertThat(graph.getEdge(node1Id, node1Id)).isNull();
+		assertThat(graph.getEdge(node1Id, node2Id)).isNotNull();
+		assertThat(graph.getEdge(node2Id, node1Id)).isNotNull();
+		assertThat(graph.getEdge(node2Id, node2Id)).isNull();
 	}
 
 	@Test public void testThreeNodes() {
-		final Map<String, NodeIdentity> map = toMap(ImmutableSet.of("1", "2", "3"),
-		                                                                                input -> mock(
-				                                                                                NodeIdentity.class));
+		final Map<String, NodeIdentity> map = toMap(ImmutableSet.of("1", "2", "3"), input -> mock(NodeIdentity.class));
 
 		map.forEach((s, nodeIdentity) -> when(nodeIdentity.id()).thenReturn(s));
 
@@ -88,10 +81,10 @@ public class RingTopologyProcessorTest {
 		final DirectedGraph<String, DefaultEdge> graph = processor.getGraph(identities);
 
 		map.keySet().forEach(nodeId -> {
-			assertThat(graph.containsVertex(nodeId), is(true));
-			assertThat(graph.inDegreeOf(nodeId), is(equalTo(1)));
-			assertThat(graph.outDegreeOf(nodeId), is(equalTo(1)));
-			assertThat(graph.getEdge(nodeId, nodeId), is(nullValue()));
+			assertThat(graph.containsVertex(nodeId)).isTrue();
+			assertThat(graph.inDegreeOf(nodeId)).isEqualTo(1);
+			assertThat(graph.outDegreeOf(nodeId)).isEqualTo(1);
+			assertThat(graph.getEdge(nodeId, nodeId)).isNull();
 		});
 
 		final String start = map.keySet().stream().findAny().get();
@@ -100,11 +93,11 @@ public class RingTopologyProcessorTest {
 
 		do {
 			final Set<DefaultEdge> outEdges = graph.outgoingEdgesOf(current);
-			assertThat(outEdges, hasSize(1));
+			assertThat(outEdges).hasSize(1);
 			current = graph.getEdgeTarget(getOnlyElement(outEdges));
 			counter++;
 		} while (!Objects.equals(current, start));
 
-		assertThat(counter, is(equalTo(3)));
+		assertThat(counter).isEqualTo(3);
 	}
 }

@@ -1,16 +1,6 @@
 package org.age.services.topology.processors;
 
-import org.jgrapht.DirectedGraph;
-import org.jgrapht.graph.DefaultEdge;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -18,9 +8,16 @@ import org.age.services.identity.NodeIdentity;
 
 import com.google.common.collect.ImmutableSet;
 
-public class FullyConnectedTopologyProcessorTest {
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jgrapht.DirectedGraph;
+import org.jgrapht.graph.DefaultEdge;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 
-	private FullyConnectedTopologyProcessor processor;
+public final class FullyConnectedTopologyProcessorTest {
+
+	@Nullable private FullyConnectedTopologyProcessor processor;
 
 	@BeforeMethod public void setUp() {
 		processor = new FullyConnectedTopologyProcessor();
@@ -38,10 +35,10 @@ public class FullyConnectedTopologyProcessorTest {
 
 		final DirectedGraph<String, DefaultEdge> graph = processor.getGraph(identities);
 
-		assertThat(graph.containsVertex(nodeId), is(true));
-		assertThat(graph.inDegreeOf(nodeId), is(equalTo(0)));
-		assertThat(graph.outDegreeOf(nodeId), is(equalTo(0)));
-		assertThat(graph.getEdge(nodeId, nodeId), is(nullValue()));
+		assertThat(graph.containsVertex(nodeId)).isTrue();
+		assertThat(graph.inDegreeOf(nodeId)).isEqualTo(0);
+		assertThat(graph.outDegreeOf(nodeId)).isEqualTo(0);
+		assertThat(graph.getEdge(nodeId, nodeId)).isNull();
 	}
 
 	@Test public void testTwoNodes() {
@@ -55,17 +52,17 @@ public class FullyConnectedTopologyProcessorTest {
 
 		final DirectedGraph<String, DefaultEdge> graph = processor.getGraph(identities);
 
-		assertThat(graph.containsVertex(node1Id), is(true));
-		assertThat(graph.inDegreeOf(node1Id), is(equalTo(1)));
-		assertThat(graph.outDegreeOf(node1Id), is(equalTo(1)));
+		assertThat(graph.containsVertex(node1Id)).isTrue();
+		assertThat(graph.inDegreeOf(node1Id)).isEqualTo(1);
+		assertThat(graph.outDegreeOf(node1Id)).isEqualTo(1);
 
-		assertThat(graph.containsVertex(node2Id), is(true));
-		assertThat(graph.inDegreeOf(node2Id), is(equalTo(1)));
-		assertThat(graph.outDegreeOf(node2Id), is(equalTo(1)));
+		assertThat(graph.containsVertex(node2Id)).isTrue();
+		assertThat(graph.inDegreeOf(node2Id)).isEqualTo(1);
+		assertThat(graph.outDegreeOf(node2Id)).isEqualTo(1);
 
-		assertThat(graph.getEdge(node1Id, node1Id), is(nullValue()));
-		assertThat(graph.getEdge(node1Id, node2Id), is(notNullValue()));
-		assertThat(graph.getEdge(node2Id, node1Id), is(notNullValue()));
-		assertThat(graph.getEdge(node2Id, node2Id), is(nullValue()));
+		assertThat(graph.getEdge(node1Id, node1Id)).isNull();
+		assertThat(graph.getEdge(node1Id, node2Id)).isNotNull();
+		assertThat(graph.getEdge(node2Id, node1Id)).isNotNull();
+		assertThat(graph.getEdge(node2Id, node2Id)).isNull();
 	}
 }

@@ -32,7 +32,6 @@ test {
 dependencies {
     // XXX: All dependencies are dynamic for now. When stabilizing, we should put the specific versions here.
     testCompile 'org.testng:testng:+'
-    testCompile 'org.hamcrest:hamcrest-all:+'
     testCompile 'org.mockito:mockito-all:+'
     testCompile 'org.uncommons:reportng:+'
     testCompile 'com.google.inject:guice:+'
