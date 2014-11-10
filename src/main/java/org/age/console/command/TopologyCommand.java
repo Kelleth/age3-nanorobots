@@ -45,9 +45,9 @@ public class TopologyCommand implements Command {
 
 
 	private void info(final PrintWriter printWriter) {
-		final Optional<String> masterId = topologyService.getMasterId();
-		final Optional<DirectedGraph<String, DefaultEdge>> topology = topologyService.getTopology();
-		final Optional<String> topologyType = topologyService.getTopologyType();
+		final Optional<String> masterId = topologyService.masterId();
+		final Optional<DirectedGraph<String, DefaultEdge>> topology = topologyService.topologyGraph();
+		final Optional<String> topologyType = topologyService.topologyType();
 
 		printWriter.println("Topology info = {");
 		printWriter.println("\tmaster = " + masterId.orElse("# not elected #"));

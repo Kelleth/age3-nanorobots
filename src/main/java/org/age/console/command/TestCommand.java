@@ -7,6 +7,7 @@ package org.age.console.command;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -18,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
 
 import org.age.services.worker.WorkerMessage;
-import org.age.services.worker.WorkerMessage.Type;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -28,6 +28,7 @@ import com.google.common.reflect.ClassPath;
 import com.google.common.reflect.ClassPath.ClassInfo;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ITopic;
+
 import jline.console.ConsoleReader;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -50,13 +51,12 @@ public class TestCommand implements Command {
 
 	@MonotonicNonNull private ITopic<WorkerMessage> topic;
 
-	@PostConstruct
-	public void construct() {
+	@PostConstruct public void construct() {
 		topic = hazelcastInstance.getTopic("worker/channel");
 	}
 
-	@Override
-	public boolean execute(final JCommander commander, final ConsoleReader reader, final PrintWriter printWriter) {
+	@Override public boolean execute(final JCommander commander, final ConsoleReader reader,
+	                                 final PrintWriter printWriter) {
 		if (listExamples) {
 			listExamples(printWriter);
 			return true;
@@ -64,11 +64,17 @@ public class TestCommand implements Command {
 
 		final String className = "org.age.example." + example;
 
-		topic.publish(WorkerMessage.createBroadcastWithPayload(Type.LOAD_CLASS, className));
+		topic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CLASS, className));
+		try {
+			TimeUnit.SECONDS.sleep(1);
+		} catch (final InterruptedException e) {
+			log.debug("Interrupted.", e);
+		}
+		topic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.START_COMPUTATION));
 		return true;
 	}
 
-	private void listExamples(final PrintWriter printWriter) {
+	private static void listExamples(final PrintWriter printWriter) {
 		try {
 			final ClassPath classPath = ClassPath.from(TestCommand.class.getClassLoader());
 			final ImmutableSet<ClassInfo> classes = classPath.getTopLevelClasses("org.age.example");
@@ -79,8 +85,7 @@ public class TestCommand implements Command {
 		}
 	}
 
-	@Override
-	public String toString() {
+	@Override public String toString() {
 		return toStringHelper(this).toString();
 	}
 }

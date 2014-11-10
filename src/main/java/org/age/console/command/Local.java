@@ -42,10 +42,10 @@ public class Local implements Command {
 
 
 	private void info(final PrintWriter printWriter) {
-		final NodeIdentity identity = identityService.getNodeIdentity();
+		final NodeIdentity identity = identityService.nodeIdentity();
 		printWriter.println("Local node info = {");
-		printWriter.println("\tid = " + identity.getId());
-		printWriter.println("\ttype = " + identity.getType());
+		printWriter.println("\tid = " + identity.id());
+		printWriter.println("\ttype = " + identity.type());
 		printWriter.println("}");
 	}
 
