@@ -36,9 +36,9 @@ public class LocalTest {
 	public void setUp() {
 		MockitoAnnotations.initMocks(this);
 
-		when(identityService.getNodeIdentity()).thenReturn(identity);
-		when(identity.getId()).thenReturn(NODE_ID);
-		when(identity.getType()).thenReturn(NodeType.UNKNOWN);
+		when(identityService.nodeIdentity()).thenReturn(identity);
+		when(identity.id()).thenReturn(NODE_ID);
+		when(identity.type()).thenReturn(NodeType.UNKNOWN);
 
 		stringWriter = new StringWriter();
 		printWriter = new PrintWriter(stringWriter);
