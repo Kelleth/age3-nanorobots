@@ -59,7 +59,7 @@ dependencies {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = "2.2-rc-2"
+    gradleVersion = "2.2"
 }
 
 task(console, dependsOn: 'classes') << {
