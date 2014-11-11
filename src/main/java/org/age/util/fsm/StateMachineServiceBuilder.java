@@ -38,6 +38,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
@@ -57,7 +59,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Maps.newEnumMap;
 
 /**
- * A builder of {@link StateMachineService} instances. It offers a simple, flexible interface for creation of state
+ * A builder of {@link DefaultStateMachineService} instances. It offers a simple, flexible interface for creation of state
  * machines.
  * <p>
  *
@@ -229,9 +231,7 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		checkState(getFailureEvent() != null);
 
 		try {
-			return new StateMachineService<S, E>(this) {
-				/* Empty */
-			};
+			return new DefaultStateMachineService<>(this);
 		} catch (final NoSuchMethodException e) {
 			log.error("Incorrect event class.", e);
 			throw new RuntimeException(e);
@@ -304,7 +304,7 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 
 		for (final S state : allStates) {
 			for (final E event : allEvents) {
-				table.put(state, event, TransitionDescriptor.getNull());
+				table.put(state, event, TransitionDescriptor.nullDescriptor());
 			}
 		}
 
@@ -326,7 +326,7 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 
 		if (log.isDebugEnabled()) {
 			table.values().forEach(descriptor -> {
-				if (!descriptor.isNull()) {
+				if (nonNull(descriptor.initial())) {
 					log.debug("New transition: {}.", descriptor);
 				}
 			});

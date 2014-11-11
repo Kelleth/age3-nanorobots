@@ -193,7 +193,7 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 	}
 
 	@Override public boolean isRunning() {
-		return service.running();
+		return service.isRunning();
 	}
 
 	@Override public int getPhase() {
@@ -331,7 +331,7 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 	}
 
 	@Override public boolean hasTopology() {
-		return service.inState(State.WITH_TOPOLOGY);
+		return service.isInState(State.WITH_TOPOLOGY);
 	}
 
 	@Override @NonNull public Optional<DirectedGraph<String, DefaultEdge>> topologyGraph() {

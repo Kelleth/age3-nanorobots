@@ -13,6 +13,7 @@ import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -68,12 +69,14 @@ public class NodeLifecycleService implements SmartLifecycle {
 		 */
 		STOP
 	}
-	private static final Logger log = LoggerFactory.getLogger(NodeLifecycleService.class);
-	@Inject private EventBus eventBus;
-	private StateMachineService<State, Event> service;
 
-	@PostConstruct
-	public void construct() {
+	private static final Logger log = LoggerFactory.getLogger(NodeLifecycleService.class);
+
+	@Inject @MonotonicNonNull private EventBus eventBus;
+
+	@MonotonicNonNull private StateMachineService<State, Event> service;
+
+	@PostConstruct public final void construct() {
 		//@formatter:off
 		service = StateMachineServiceBuilder
 			.withStatesAndEvents(State.class, Event.class)
@@ -99,13 +102,11 @@ public class NodeLifecycleService implements SmartLifecycle {
 		//@formatter:on
 	}
 
-	@Override
-	public boolean isAutoStartup() {
+	@Override public boolean isAutoStartup() {
 		return true;
 	}
 
-	@Override
-	public void stop(final Runnable runnable) {
+	@Override public void stop(final Runnable runnable) {
 		stop();
 		runnable.run();
 	}
@@ -113,7 +114,7 @@ public class NodeLifecycleService implements SmartLifecycle {
 	public void awaitTermination() {
 		log.debug("Awaiting termination.");
 		// XXX: It should be nicer.
-		while (!service.terminated()) {
+		while (!service.isTerminated()) {
 			try {
 				TimeUnit.SECONDS.sleep(5);
 			} catch (InterruptedException e) {
@@ -122,27 +123,23 @@ public class NodeLifecycleService implements SmartLifecycle {
 		}
 	}
 
-	@Override
-	public void start() {
+	@Override public void start() {
 		log.debug("Node lifecycle service starting.");
 		service.fire(Event.START);
 	}
 
-	@Override
-	public void stop() {
+	@Override public void stop() {
 		log.debug("Node lifecycle service stopping.");
 		service.fire(Event.STOP);
 		awaitTermination();
 		log.info("Node lifecycle service stopped.");
 	}
 
-	@Override
-	public boolean isRunning() {
-		return !(service.inState(State.OFFLINE) || service.terminated());
+	@Override public boolean isRunning() {
+		return !(service.isInState(State.OFFLINE) || service.isTerminated());
 	}
 
-	@Override
-	public int getPhase() {
+	@Override public int getPhase() {
 		return Integer.MIN_VALUE;
 	}
 
