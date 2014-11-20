@@ -1,17 +1,21 @@
 apply plugin: 'java'
 apply plugin: 'idea'
 apply plugin: 'application'
+apply plugin: 'maven-publish'
 
+group = 'org.age'
 sourceCompatibility = 1.8
 version = '1.0.0-SNAPSHOT'
+
+mainClassName = 'org.age.node.Bootstrapper'
 
 repositories {
     mavenCentral()
 }
 
 configurations {
-
     all*.exclude group: 'commons-logging', module: 'commons-logging'
+    markdownDoclet
 }
 
 test {
@@ -21,6 +25,11 @@ test {
         listeners << 'org.uncommons.reportng.JUnitXMLReporter'
     }
     ext.useDefaultListeners = true
+}
+
+tasks.withType(Test) {
+    scanForTestClasses = false
+    include "**/*Test.class"
 }
 
 //allprojects {
@@ -56,6 +65,8 @@ dependencies {
     compile 'com.beust:jcommander:+'
 
     runtime 'org.codehaus.groovy:groovy-all:+'
+
+    markdownDoclet 'ch.raffael.pegdown-doclet:pegdown-doclet:+'
 }
 
 task wrapper(type: Wrapper) {
@@ -86,16 +97,6 @@ task(console, dependsOn: 'classes') << {
     }
 }
 
-/*task console(type: JavaExec) {
-    main = 'org.age.console.Console'
-    classpath = sourceSets.main.runtimeClasspath
-    systemProperty "logback.statusListenerClass", "ch.qos.logback.core.status.OnConsoleStatusListener"
-    systemProperty "logback.configurationFile", "org/age/node/logback.groovy"
-    run {
-        standardInput = System.in
-    }
-}*/
-
 task node(type: JavaExec) {
     main = 'org.age.node.Bootstrapper'
     classpath = sourceSets.main.runtimeClasspath
@@ -110,4 +111,23 @@ idea {
     }
 }
 
-mainClassName = 'org.age.node.Bootstrapper'
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+publishing {
+    repositories {
+        maven {
+            url "$buildDir/repo"
+        }
+    }
+}
+
+javadoc.options {
+    docletpath = configurations.markdownDoclet.files.asType(List)
+    doclet = "ch.raffael.doclets.pegdown.PegdownDoclet"
+    addStringOption("parse-timeout", "10")
+}
