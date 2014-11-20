@@ -98,7 +98,7 @@ public class NodeLifecycleService implements SmartLifecycle {
 
 			.withEventBus(eventBus)
 			//.notifyWithType(LifecycleStateChangedEvent.class)
-			.shutdownWhenTerminated().build();
+			.build();
 		//@formatter:on
 	}
 
@@ -143,9 +143,9 @@ public class NodeLifecycleService implements SmartLifecycle {
 		return Integer.MIN_VALUE;
 	}
 
-	private class ExceptionHandler implements Consumer<List<Throwable>> {
+	private class ExceptionHandler implements Consumer<Throwable> {
 
-		@Override public void accept(final List<Throwable> throwables) {
+		@Override public void accept(final Throwable throwable) {
 
 		}
 	}

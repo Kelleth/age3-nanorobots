@@ -30,9 +30,9 @@ public final class StateMachineServiceBuilderTest {
 
 	private static final String SERVICE_NAME = "name";
 
-	private final Consumer<FSM<State, Event>> consumer1 = fsm -> {};
+	private static final Consumer<FSM<State, Event>> consumer1 = fsm -> {};
 
-	private final Consumer<FSM<State, Event>> consumer2 = fsm -> {};
+	private static final Consumer<FSM<State, Event>> consumer2 = fsm -> {};
 
 	private static class StateChangedEvent_Helper extends StateChangedEvent<State, Event> {
 		protected StateChangedEvent_Helper(final State previousState, final Event event, final State newState) {
@@ -52,8 +52,8 @@ public final class StateMachineServiceBuilderTest {
 	}
 
 	@Test public void testConstructor_correctInitialization() {
-		assertThat(builder.getStateClass()).isEqualTo(State.class);
-		assertThat(builder.getEventClass()).isEqualTo(Event.class);
+		assertThat(builder.stateClass()).isEqualTo(State.class);
+		assertThat(builder.eventClass()).isEqualTo(Event.class);
 		assertThat(builder.getStateChangedEventClass()).isEqualTo(StateChangedEvent.class);
 	}
 
@@ -64,14 +64,14 @@ public final class StateMachineServiceBuilderTest {
 
 	@Test public void testWithName() throws Exception {
 		builder.withName(SERVICE_NAME);
-		assertThat(builder.getName()).isEqualTo(SERVICE_NAME);
+		assertThat(builder.name()).isEqualTo(SERVICE_NAME);
 	}
 
 	@Test public void testStateDefinition_singleEvent() {
 		builder.in(State.STATE1).on(Event.EVENT1).execute(consumer1).goTo(State.STATE2).commit();
 
-		final Table<State, Event, Consumer<FSM<State, Event>>> actions = builder.getActions();
-		final Table<State, Event, Set<State>> transitions = builder.getTransitions();
+		final Table<State, Event, Consumer<FSM<State, Event>>> actions = builder.actions();
+		final Table<State, Event, Set<State>> transitions = builder.transitions();
 
 		final Consumer<FSM<State, Event>> action = actions.get(State.STATE1, Event.EVENT1);
 		final Set<State> states = transitions.get(State.STATE1, Event.EVENT1);
@@ -92,8 +92,8 @@ public final class StateMachineServiceBuilderTest {
 		       .goTo(State.STATE3)
 		       .commit();
 
-		final Table<State, Event, Consumer<FSM<State, Event>>> actions = builder.getActions();
-		final Table<State, Event, Set<State>> transitions = builder.getTransitions();
+		final Table<State, Event, Consumer<FSM<State, Event>>> actions = builder.actions();
+		final Table<State, Event, Set<State>> transitions = builder.transitions();
 
 		final Consumer<FSM<State, Event>> action1 = actions.get(State.STATE1, Event.EVENT1);
 		final Set<State> states1 = transitions.get(State.STATE1, Event.EVENT1);
@@ -197,7 +197,7 @@ public final class StateMachineServiceBuilderTest {
 	@Test(expectedExceptions = NullPointerException.class)
 	public void testStartWith() {
 		builder.startWith(State.STATE1);
-		assertThat(builder.getInitialState()).isEqualTo(State.STATE1);
+		assertThat(builder.initialState()).isEqualTo(State.STATE1);
 
 		builder.startWith(null);
 
@@ -208,13 +208,13 @@ public final class StateMachineServiceBuilderTest {
 	public void testTerminateIn() {
 		builder.terminateIn(State.STATE1);
 
-		assertThat(builder.getTerminalStates()).hasSize(1);
-		assertThat(builder.getTerminalStates()).contains(State.STATE1);
+		assertThat(builder.terminalStates()).hasSize(1);
+		assertThat(builder.terminalStates()).contains(State.STATE1);
 
 		builder.terminateIn(State.STATE1, State.STATE2);
 
-		assertThat(builder.getTerminalStates()).hasSize(2);
-		assertThat(builder.getTerminalStates()).contains(State.STATE1, State.STATE2);
+		assertThat(builder.terminalStates()).hasSize(2);
+		assertThat(builder.terminalStates()).contains(State.STATE1, State.STATE2);
 
 		builder.terminateIn();
 

@@ -1,43 +1,42 @@
 package org.age.util.fsm;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.Iterables.consumingIterable;
+import static com.google.common.collect.Iterables.getOnlyElement;
+import static com.google.common.collect.Queues.newConcurrentLinkedQueue;
+import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
+import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
+import static java.util.Objects.nonNull;
+import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
+import static org.age.util.Runnables.swallowingRunnable;
+
+import org.age.annotation.ForTestsOnly;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.EnumSet;
-import java.util.List;
+import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.StampedLock;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
-
-import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
 import javax.annotation.concurrent.ThreadSafe;
+
+import com.google.common.collect.Table;
+import com.google.common.eventbus.EventBus;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import org.checkerframework.checker.lock.qual.GuardedBy;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
-import com.google.common.collect.Table;
-import com.google.common.eventbus.EventBus;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.Iterables.consumingIterable;
-import static com.google.common.collect.Lists.newArrayListWithExpectedSize;
-import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
-import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
-import static org.age.util.Runnables.swallowingRunnable;
 
 /**
  * A FSM-based service implementation.
@@ -53,38 +52,40 @@ import static org.age.util.Runnables.swallowingRunnable;
  * @see StateMachineServiceBuilder
  */
 @ThreadSafe
-public final class DefaultStateMachineService<S extends Enum<S>, E extends Enum<E>> implements
-                                                                                       StateMachineService<S,E> {
+public final class DefaultStateMachineService<S extends Enum<S>, E extends Enum<E>>
+		implements StateMachineService<S, E> {
 
 	private static final Logger log = LoggerFactory.getLogger(DefaultStateMachineService.class);
 
-	private final String name;
-
-	private final Table<S, E, TransitionDescriptor<S, E>> transitionsTable;
-
-	private final E failureEvent;
-
-	private final Consumer<List<Throwable>> exceptionHandler;
-
-	private final List<Throwable> exceptions = newArrayListWithExpectedSize(2);
-
-	private final ListeningScheduledExecutorService service;
-
-	private final PriorityBlockingQueue<EventHolder> eventQueue = new PriorityBlockingQueue<>();
+	private final String serviceName;
 
 	private final EnumSet<S> terminalStates;
 
 	private final Method eventCreate;
 
-	private final ReadWriteLock stateLock = new ReentrantReadWriteLock();
+	private final S initialState;
 
-	private final ScheduledFuture<?> dispatcherFuture;
+	private final E failureEvent;
 
-	private final boolean shutdownAfterTerminalState;
+	private final boolean synchronous;
+
+	private final Table<S, E, TransitionDescriptor<S, E>> transitionsTable;
+
+	private final Consumer<Throwable> exceptionHandler;
+
+	private final ConcurrentLinkedQueue<Throwable> exceptions = newConcurrentLinkedQueue();
+
+	@Nullable private final ListeningScheduledExecutorService service;
+
+	private final Queue<E> eventQueue = newConcurrentLinkedQueue();
+
+	@Nullable private final ScheduledFuture<?> dispatcherFuture;
 
 	private final EventBus eventBus;
 
-	private final S initialState;
+	private final AtomicBoolean failed = new AtomicBoolean(false);
+
+	private final StampedLock stateLock = new StampedLock();
 
 	@NonNull @GuardedBy("stateLock") private S currentState;
 
@@ -95,288 +96,265 @@ public final class DefaultStateMachineService<S extends Enum<S>, E extends Enum<
 	/**
 	 * Package-protected constructor.
 	 * <p>
-	 *
+	 * <p>
 	 * The proper way to build the service is to use the builder {@link StateMachineServiceBuilder}.
 	 *
 	 * @param builder
 	 * 		a builder containing the state machine definition.
 	 */
-	DefaultStateMachineService(@NonNull final StateMachineServiceBuilder<S, E> builder) throws NoSuchMethodException {
-		name = builder.getName();
-		initialState = builder.getInitialState();
+	DefaultStateMachineService(@NonNull final StateMachineServiceBuilder<S, E> builder) {
+		serviceName = builder.name();
+		initialState = builder.initialState();
 		currentState = initialState;
-		eventBus = builder.getEventBus();
-		final Class<? extends StateChangedEvent> stateChangedEventClass = builder.getStateChangedEventClass();
-		Method eventCreateMethod;
-		try {
-			eventCreateMethod = stateChangedEventClass.getMethod("create", builder.getStateClass(), builder.getEventClass(),
-			                                             builder.getStateClass());
-		} catch (final NoSuchMethodException e) {
-			eventCreateMethod = stateChangedEventClass.getMethod("create", Enum.class, Enum.class, Enum.class);
-		}
-		eventCreate = eventCreateMethod;
-		terminalStates = builder.getTerminalStates();
-		shutdownAfterTerminalState = builder.getShutdownWhenTerminated();
+		eventBus = builder.eventBus();
+		eventCreate = builder.stateChangedEventCreateMethod();
+		terminalStates = builder.terminalStates();
 		failureEvent = builder.getFailureEvent();
 		exceptionHandler = builder.getExceptionHandler();
 		transitionsTable = builder.buildTransitionsTable();
-		service = listeningDecorator(newSingleThreadScheduledExecutor(
-				new ThreadFactoryBuilder().setNameFormat("fsm-" + name + "-srv-%d").build()));
-		dispatcherFuture = service.scheduleAtFixedRate(swallowingRunnable(new Dispatcher()), 0L, 1L, TimeUnit.MILLISECONDS);
+		if (builder.isSynchronous()) {
+			synchronous = true;
+			service = null;
+			dispatcherFuture = null;
+		} else {
+			synchronous = false;
+			service = listeningDecorator(newSingleThreadScheduledExecutor(
+					new ThreadFactoryBuilder().setNameFormat("fsm-" + serviceName + "-srv-%d").build()));
+			dispatcherFuture = service.scheduleWithFixedDelay(swallowingRunnable(new Dispatcher()), 0L, 1L,
+			                                                  TimeUnit.MILLISECONDS);
+		}
 	}
 
 	/**
-	 * Fires a specific event.
+	 * Fires an event.
+	 * <p>
+	 * If the event is a failure event, the FSM is marked as failed and cannot process events anymore.
 	 *
 	 * @param event
 	 * 		an event to proceed with.
 	 */
 	@Override public void fire(@NonNull final E event) {
-		log.debug("{}: {} fired.", name, event);
-		eventQueue.add(new EventHolder(event));
-	}
-
-	@Nullable private E getCurrentEvent() {
-		return withReadLock(() -> currentEvent);
-	}
-
-	private void setCurrentEvent(@Nullable final E event) {
-		withWriteLock(() -> currentEvent = event);
-	}
-
-	private void withWriteLock(@NonNull final Runnable runnable) {
-		stateLock.writeLock().lock();
-		try {
-			runnable.run();
-		} finally {
-			stateLock.writeLock().unlock();
+		log.debug("{}: {} fired.", serviceName, event);
+		logIfTerminated();
+		if (failureEvent == event) {
+			log.debug("{}: Failure.", serviceName);
+			failed.set(true);
+		} else {
+			eventQueue.add(event);
 		}
 	}
 
-	@Nullable private <T> T withReadLock(@NonNull final Supplier<T> function) {
-		stateLock.readLock().lock();
+	@Override public void goTo(@NonNull final S nextState) {
+		final long stamp = stateLock.writeLock();
 		try {
-			return function.get();
+			this.nextState = nextState;
 		} finally {
-			stateLock.readLock().unlock();
+			stateLock.unlock(stamp);
 		}
-	}
-
-	// FSM
-
-	@Override
-	public void goTo(@NonNull final S nextState) {
-		this.nextState = nextState;
 	}
 
 	@Override public boolean isRunning() {
-		return withReadLock(() -> !(isInState(initialState) || isTerminated()));
+		final long stamp = stateLock.readLock();
+		try {
+			return (currentState != initialState) && !terminalStates.contains(currentState);
+		} finally {
+			stateLock.unlock(stamp);
+		}
 	}
 
-	/**
-	 * Checks atomically whether the service is in the given state.
-	 *
-	 * @param state
-	 * 		a state to check.
-	 *
-	 * @return true if the service is in the given state, false otherwise.
-	 */
+
 	@Override public boolean isInState(@NonNull final S state) {
-		return withReadLock(() -> currentState == state);
+		final long stamp = stateLock.readLock();
+		try {
+			return currentState == state;
+		} finally {
+			stateLock.unlock(stamp);
+		}
 	}
 
-	/**
-	 * Checks whether this service is isTerminated.
-	 *
-	 * @return true if the FSM is isTerminated (in a terminal state).
-	 */
 	@Override public boolean isTerminated() {
-		return withReadLock(() -> terminalStates.contains(currentState));
+		final long stamp = stateLock.readLock();
+		try {
+			return terminalStates.contains(currentState);
+		} finally {
+			stateLock.unlock(stamp);
+		}
 	}
 
-	/**
-	 * Checks whether this service is currently terminating (transitioning to a terminal state).
-	 *
-	 * @return true if the FSM is terminating.
-	 */
-	@Override public boolean isTerminating() {
-		return withReadLock(() -> {
-			if (currentEvent == null) {
-				return false;
-			}
-			final TransitionDescriptor<S, E> descriptor = transitionsTable.get(currentState, currentEvent);
-			return !Sets.intersection(terminalStates, descriptor.target()).isEmpty();
-		});
-	}
-
-	/**
-	 * Shutdowns and cleans up the service.
-	 *
-	 * @throws IllegalStateException
-	 * 		if service has not isTerminated yet.
-	 * @see #isTerminated()
-	 */
 	@Override public void shutdown() {
-		checkState(isTerminated(), "Service has not isTerminated yet. Current state: %s.", getCurrentState());
+		checkState(isTerminated(), "Service has not terminated yet. Current state: %s.", currentState());
+		log.debug("{}: Service is in terminal state - performing shutdown.", serviceName);
 		internalShutdown();
-		log.info("{}: Service has been shut down properly.", name);
 	}
 
-	/**
-	 * Gets the state the service is currently in.
-	 *
-	 * @return the current state of the service.
-	 */
-	@Override @NonNull
-	public S getCurrentState() {
-		return withReadLock(() -> currentState);
+	@Override public void forceShutdown() {
+		log.debug("{}: Performing force shutdown.", serviceName);
+		internalShutdown();
 	}
 
-	private void setCurrentState(@NonNull final S state) {
-		withWriteLock(() -> currentState = state);
+	@Override @NonNull public S currentState() {
+		final long stamp = stateLock.readLock();
+		try {
+			return currentState;
+		} finally {
+			stateLock.unlock(stamp);
+		}
+	}
+
+	@Override public boolean isFailed() {
+		final long stamp = stateLock.readLock();
+		try {
+			return failed.get();
+		} finally {
+			stateLock.unlock(stamp);
+		}
+	}
+
+	@Nullable public E currentEvent() {
+		final long stamp = stateLock.readLock();
+		try {
+			return currentEvent;
+		} finally {
+			stateLock.unlock(stamp);
+		}
+	}
+
+	@Override public String toString() {
+		final long stamp = stateLock.readLock();
+		try {
+			return toStringHelper(this).addValue(serviceName)
+			                           .add("S", currentState)
+			                           .add("E", currentEvent)
+			                           .add("failed?", failed)
+			                           .add("terminated?", terminalStates.contains(currentState))
+			                           .toString();
+		} finally {
+			stateLock.unlock(stamp);
+		}
+	}
+
+	void drainEvents() {
+		for (final E event : consumingIterable(eventQueue)) {
+			log.warn("{}: Unprocessed event {}.", serviceName, event);
+		}
+	}
+
+	@ForTestsOnly void execute() {
+		assert synchronous;
+		new Dispatcher().run();
 	}
 
 	private void internalShutdown() {
-		log.debug("{}: Service is shutting down.", name);
-		dispatcherFuture.cancel(false);
-		shutdownAndAwaitTermination(service, 10, TimeUnit.SECONDS);
+		log.debug("{}: Service is shutting down.", serviceName);
+		if (!synchronous) {
+			assert (dispatcherFuture != null) && (service != null);
+			dispatcherFuture.cancel(false);
+			shutdownAndAwaitTermination(service, 10L, TimeUnit.SECONDS);
+		}
+		drainEvents();
+		log.info("{}: Service has been shut down properly.", serviceName);
 	}
 
-	@Override
-	public String toString() {
-		return withReadLock(() -> toStringHelper(this).addValue(name)
-		                                              .add("S", currentState)
-		                                              .add("E", currentEvent)
-		                                              .add("isTerminated?", isTerminated())
-		                                              .toString());
-	}
-
-	public void drainEvents() {
-		for (final EventHolder holder : consumingIterable(eventQueue)) {
-			log.warn("{}: Unprocessed event {}.", name, holder.getEvent());
-			holder.getSemaphore().release();
+	private void logIfTerminated() {
+		final long stamp = stateLock.readLock();
+		try {
+			if (terminalStates.contains(currentState)) {
+				log.warn("{}: Service already terminated ({}).", serviceName, currentState);
+			}
+		} finally {
+			stateLock.unlock(stamp);
 		}
 	}
 
 	private final class Dispatcher implements Runnable {
-		@Override
-		public void run() {
-				if (isTerminated()) {
-					if (!eventQueue.isEmpty()) {
-						log.warn("{}: Service already isTerminated ({}).", name, currentState);
-						drainEvents();
-					}
+		@Override public void run() {
+			if (isTerminated()) {
+				return;
+			}
 
-					if (!service.isShutdown() && shutdownAfterTerminalState) {
-						internalShutdown();
-					}
+			final TransitionDescriptor<S, E> transitionDescriptor;
+			long stamp = stateLock.readLock();
+			try {
+				// Still processing previous event
+				if (nonNull(currentEvent)) {
 					return;
 				}
+				final long writeStamp = stateLock.tryConvertToWriteLock(stamp);
+				if (writeStamp == 0L) {
+					stateLock.unlockRead(stamp);
+					stamp = stateLock.writeLock();
+				} else {
+					stamp = writeStamp;
+				}
+				assert stamp != 0L;
 
-				if ((getCurrentEvent() != null) || eventQueue.isEmpty()) {
+				// Prepare the current event
+				if (failed.get()) {
+					currentEvent = failureEvent;
+				} else if (eventQueue.isEmpty()) {
+					// Nothing to process
 					return;
+				} else {
+					currentEvent = eventQueue.poll();
 				}
+				// Process the current event
+				log.debug("{}: In {} and processing {}.", serviceName, currentState, currentEvent);
+				transitionDescriptor = transitionsTable.get(currentState, currentEvent);
+			} finally {
+				stateLock.unlock(stamp);
+			}
 
-				final EventHolder holder;
-				final E event;
-				stateLock.writeLock().lock();
-				try {
-					holder = eventQueue.take();
-					event = holder.getEvent();
-					setCurrentEvent(event);
-				} catch (final InterruptedException e) {
-					log.debug("{}: Interrupted when waiting for event. Returning.", name, e);
-					return;
-				} finally {
-					stateLock.writeLock().unlock();
-				}
+			log.debug("{}: Planned transition: {}.", serviceName, transitionDescriptor);
 
-				log.debug("{}: In {} and processing {}.", name, currentState, event);
-				final TransitionDescriptor<S, E> transitionDescriptor = transitionsTable.get(currentState, event);
-				log.debug("{}: Planned transition: {}.", name, transitionDescriptor);
+			// Execute the action
+			try {
+				final Consumer<FSM<S, E>> action = transitionDescriptor.action();
+				log.debug("{}: Executing the planned action {}.", serviceName, action);
+				action.accept(DefaultStateMachineService.this);
+				log.debug("{}: Finished the execution of the action.", serviceName);
+				onSuccess(transitionDescriptor);
+			} catch (final Throwable t) {
+				onFailure(transitionDescriptor, t);
+			}
 
-				final Consumer<FSM<S, E>> runnable = transitionDescriptor.action();
-				try {
-					runnable.accept(DefaultStateMachineService.this);
-					onSuccess(transitionDescriptor);
-				} catch (final Throwable t) {
-					onFailure(transitionDescriptor, t);
-				} finally {
-					holder.getSemaphore().release();
-				}
+			consumingIterable(exceptions).forEach(exceptionHandler::accept);
 		}
 
 		public void onSuccess(final TransitionDescriptor<S, E> descriptor) {
-			withWriteLock(() -> {
+			final long stamp = stateLock.writeLock();
+			try {
 				final Set<S> targetSet = descriptor.target();
 				if ((targetSet.size() != 1) && (nextState == null)) {
-					log.error("{}: Transition {} did not set the target state. Possible states: {}.", name, descriptor,
-					          targetSet);
-					fire(failureEvent);
+					log.error("{}: Transition {} did not set the target state. Possible states: {}.", serviceName,
+					          descriptor, targetSet);
+					failed.set(true);
 				} else {
-					if ((targetSet.size() != 1) && (nextState != null)) {
-						setCurrentState(nextState);
-					} else {
-						setCurrentState(Iterables.getOnlyElement(targetSet));
-					}
-					log.info("{}: Transition {} was successful. Selected state: {}.", name, descriptor,
-					         getCurrentState());
-					try {
-						eventBus.post(eventCreate.invoke(null, descriptor.initial(), descriptor.event(),
-						                                 getCurrentState()));
-					} catch (final IllegalAccessException | InvocationTargetException e) {
-						log.error("{}: Cannot create event object.", name, e);
-					}
+					currentState = ((targetSet.size() != 1) && (nextState != null)) ? nextState
+					                                                                : getOnlyElement(targetSet);
+					log.info("{}: Transition {} was successful. Selected state: {}.", serviceName, descriptor,
+					         currentState);
+					eventBus.post(eventCreate.invoke(null, descriptor.initial(), descriptor.event(), currentState));
 				}
-				setCurrentEvent(null);
+			} catch (final IllegalAccessException | InvocationTargetException e) {
+				log.error("{}: Cannot create event object.", serviceName, e);
+			} finally {
+				currentEvent = null;
 				nextState = null;
-			});
+				stateLock.unlock(stamp);
+			}
 		}
 
 		public void onFailure(final TransitionDescriptor<S, E> descriptor, final Throwable t) {
-			log.error("{}: Transition {} failed with exception.", name, descriptor, t);
-			setCurrentEvent(null);
-			exceptions.add(t);
-			fire(failureEvent);
-		}
-	}
-
-	private final class EventHolder implements Comparable<EventHolder> {
-
-		@NonNull private final E event;
-
-		private final Semaphore semaphore = new Semaphore(0);
-
-		public EventHolder(final E event) {
-			assert event != null;
-			this.event = event;
-		}
-
-		E getEvent() {
-			return event;
-		}
-
-		Semaphore getSemaphore() {
-			return semaphore;
-		}
-
-		@Override
-		public int compareTo(final EventHolder o) {
-			if (failureEvent.equals(event) && failureEvent.equals(o.event)) {
-				return 0;
+			final long stamp = stateLock.writeLock();
+			try {
+				log.error("{}: Transition {} failed with exception.", serviceName, descriptor, t);
+				exceptions.add(t);
+				failed.set(true);
+			} finally {
+				currentEvent = null;
+				nextState = null;
+				stateLock.unlock(stamp);
 			}
-			if (failureEvent.equals(event) && !failureEvent.equals(o.event)) {
-				return 1;
-			}
-			if (!failureEvent.equals(event) && !failureEvent.equals(o.event)) {
-				return -1;
-			}
-			return 0;
-		}
-
-		@Override
-		public String toString() {
-			return toStringHelper(this).addValue(event).toString();
 		}
 	}
 

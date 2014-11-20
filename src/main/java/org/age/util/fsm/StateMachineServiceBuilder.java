@@ -31,6 +31,17 @@
 
 package org.age.util.fsm;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.Maps.newEnumMap;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+import static java.util.Objects.requireNonNull;
+import static org.springframework.util.Assert.notNull;
+
+import org.age.annotation.ForTestsOnly;
+
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -38,9 +49,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import static java.util.Objects.isNull;
-import static java.util.Objects.nonNull;
-import static java.util.Objects.requireNonNull;
+import com.google.common.collect.ArrayTable;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableTable;
+import com.google.common.collect.Table;
+import com.google.common.eventbus.EventBus;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -48,21 +61,12 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ArrayTable;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableTable;
-import com.google.common.collect.Table;
-import com.google.common.eventbus.EventBus;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.Maps.newEnumMap;
-
 /**
- * A builder of {@link DefaultStateMachineService} instances. It offers a simple, flexible interface for creation of state
+ * A builder of {@link DefaultStateMachineService} instances. It offers a simple, flexible interface for creation of
+ * state
  * machines.
  * <p>
- *
+ * <p>
  * Initially, a user is required to provide at least:
  * <ul>
  * <li> an enumeration of states,
@@ -80,7 +84,9 @@ import static com.google.common.collect.Maps.newEnumMap;
  *
  * @author AGH AgE Team
  */
-public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
+@SuppressWarnings({"ReturnOfThis", "ReturnOfInnerClass", "InstanceVariableMayNotBeInitialized",
+		                  "MethodReturnOfConcreteClass"})
+public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 
 	private static final Logger log = LoggerFactory.getLogger(StateMachineServiceBuilder.class);
 
@@ -110,6 +116,8 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 
 	private Class<? extends StateChangedEvent> stateChangedEventClass = StateChangedEvent.class;
 
+	private boolean synchronous = false;
+
 	StateMachineServiceBuilder(@NonNull final Class<S> states, @NonNull final Class<E> events) {
 		stateClass = requireNonNull(states);
 		eventClass = requireNonNull(events);
@@ -131,8 +139,9 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 	 *
 	 * @return this builder instance.
 	 */
-	public StateMachineServiceBuilder<S, E> notifyWithType(Class<? extends StateChangedEvent<S, E>> stateChangedEventClass) {
-		this.stateChangedEventClass = stateChangedEventClass;
+	public StateMachineServiceBuilder<S, E> notifyWithType(
+			@NonNull final Class<? extends StateChangedEvent<S, E>> klass) {
+		stateChangedEventClass = requireNonNull(klass);
 		return this;
 	}
 
@@ -201,16 +210,6 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		return failureBehaviorBuilder;
 	}
 
-	/**
-	 * Schedules FSM shutdown after a terminalStates state has been reached.
-	 *
-	 * @return this builder instance.
-	 */
-	public StateMachineServiceBuilder<S, E> shutdownWhenTerminated() {
-		shutdownWhenTerminated = true;
-		return this;
-	}
-
 	public StateMachineServiceBuilder<S, E> withEventBus(final EventBus eventBus) {
 		this.eventBus = eventBus;
 		return this;
@@ -223,53 +222,55 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 	 */
 	public StateMachineService<S, E> build() {
 		log.debug("Building a state machine: N={}, S={}, E={}.", name, stateClass, eventClass);
-		checkState(name != null);
-		checkState(stateClass != null);
-		checkState(eventClass != null);
-		checkState(initialState != null);
-		checkState(terminalStates != null);
-		checkState(getFailureEvent() != null);
+		checkState(nonNull(name));
+		checkState(nonNull(stateClass));
+		checkState(nonNull(eventClass));
+		checkState(nonNull(initialState));
+		checkState(nonNull(terminalStates));
+		checkState(nonNull(getFailureEvent()));
 
-		try {
-			return new DefaultStateMachineService<>(this);
-		} catch (final NoSuchMethodException e) {
-			log.error("Incorrect event class.", e);
-			throw new RuntimeException(e);
-		}
+		return new DefaultStateMachineService<>(this);
 	}
 
 	// Package-protected methods for service creation and testing
 
-	@NonNull String getName() {
+	@NonNull Class<S> stateClass() {
+		assert nonNull(stateClass);
+		return stateClass;
+	}
+
+	@NonNull Class<E> eventClass() {
+		assert nonNull(eventClass);
+		return eventClass;
+	}
+
+	@NonNull String name() {
+		assert nonNull(name);
 		return name;
 	}
 
-	@NonNull Table<S, E, Set<S>> getTransitions() {
+	@NonNull Table<S, E, Set<S>> transitions() {
+		assert nonNull(transitions);
 		return transitions;
 	}
 
-	@NonNull Table<S, E, Consumer<FSM<S, E>>> getActions() {
+	@NonNull Table<S, E, Consumer<FSM<S, E>>> actions() {
+		assert nonNull(actions);
 		return actions;
 	}
 
-	@Nullable S getInitialState() {
+	@NonNull S initialState() {
+		assert nonNull(initialState);
 		return initialState;
 	}
 
-	@NonNull FailureBehaviorBuilder getFailureBehaviorBuilder() {
-		return failureBehaviorBuilder;
-	}
-
-	EnumSet<S> getTerminalStates() {
+	@NonNull EnumSet<S> terminalStates() {
+		assert nonNull(terminalStates);
 		return terminalStates;
 	}
 
-	EventBus getEventBus() {
+	@Nullable EventBus eventBus() {
 		return eventBus;
-	}
-
-	boolean getShutdownWhenTerminated() {
-		return shutdownWhenTerminated;
 	}
 
 	@Nullable Map<E, Set<S>> getAnyTransitions() {
@@ -280,16 +281,44 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		return noStateActions;
 	}
 
-	Class<? extends StateChangedEvent> getStateChangedEventClass() {
-		return stateChangedEventClass;
+	@NonNull Method stateChangedEventCreateMethod() {
+		Method eventCreateMethod;
+		try {
+			eventCreateMethod = stateChangedEventClass.getMethod("create", stateClass, eventClass, stateClass);
+		} catch (final NoSuchMethodException ignored) {
+			try {
+				eventCreateMethod = stateChangedEventClass.getMethod("create", Enum.class, Enum.class, Enum.class);
+			} catch (final NoSuchMethodException e1) {
+				log.error("Incorrect event class.", e1);
+				throw new IllegalStateException(e1);
+			}
+		}
+		return eventCreateMethod;
 	}
 
 	@NonNull E getFailureEvent() {
-		return failureBehaviorBuilder.getEvent();
+		return failureBehaviorBuilder.event();
 	}
 
-	@NonNull Consumer<List<Throwable>> getExceptionHandler() {
-		return failureBehaviorBuilder.getFunction();
+	@NonNull Consumer<Throwable> getExceptionHandler() {
+		return failureBehaviorBuilder.function();
+	}
+
+	@ForTestsOnly @NonNull Class<? extends StateChangedEvent> getStateChangedEventClass() {
+		return stateChangedEventClass;
+	}
+
+	@ForTestsOnly void synchronous() {
+		synchronous = true;
+	}
+
+	/**
+	 * Returns always false.
+	 * <p>
+	 * Unit tests should override it with true in order to process events synchronously.
+	 */
+	@ForTestsOnly boolean isSynchronous() {
+		return synchronous;
 	}
 
 	/**
@@ -297,7 +326,7 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 	 *
 	 * @return an immutable transitions table.
 	 */
-	ImmutableTable<S, E, TransitionDescriptor<S, E>> buildTransitionsTable() {
+	@NonNull Table<S, E, TransitionDescriptor<S, E>> buildTransitionsTable() {
 		final EnumSet<S> allStates = EnumSet.allOf(stateClass);
 		final EnumSet<E> allEvents = EnumSet.allOf(eventClass);
 		final Table<S, E, TransitionDescriptor<S, E>> table = ArrayTable.create(allStates, allEvents);
@@ -315,7 +344,7 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 				table.put(state, event, descriptor);
 			});
 			transitions.row(state).forEach((event, targetStates) -> {
-				if (targetStates == null) {
+				if (isNull(targetStates)) {
 					return;
 				}
 				final TransitionDescriptor<S, E> descriptor = new TransitionDescriptor<>(state, event, targetStates,
@@ -335,19 +364,12 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		return ImmutableTable.copyOf(table);
 	}
 
-	@NonNull Class<S> getStateClass() {
-		return stateClass;
-	}
-
-	@NonNull Class<E> getEventClass() {
-		return eventClass;
-	}
-
 	/**
 	 * An action builder.
 	 *
 	 * @author AGH AgE Team
 	 */
+	@SuppressWarnings("InstanceMethodNamingConvention")
 	public final class ActionBuilder {
 
 		private final S entry;
@@ -371,11 +393,10 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		 *
 		 * @return this action builder.
 		 */
-		@NonNull
-		public ActionBuilder on(@NonNull final E initiatingEvent) {
+		@NonNull public ActionBuilder on(@NonNull final E initiatingEvent) {
 			requireNonNull(initiatingEvent);
-			if (event != null) {
-				checkState(exit != null, "Declaring new event without configuring previous.");
+			if (nonNull(event)) {
+				checkState(nonNull(exit), "Declaring new event without configuring previous.");
 				transitions.put(entry, event, exit);
 				actions.put(entry, event, action);
 				event = null;
@@ -394,8 +415,7 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		 *
 		 * @return this action builder.
 		 */
-		@NonNull
-		public ActionBuilder execute(@NonNull final Consumer<FSM<S, E>> actionToExecute) {
+		@NonNull public ActionBuilder execute(@NonNull final Consumer<FSM<S, E>> actionToExecute) {
 			action = requireNonNull(actionToExecute);
 			return this;
 		}
@@ -408,8 +428,7 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		 *
 		 * @return this action builder.
 		 */
-		@SafeVarargs @NonNull
-		public final ActionBuilder goTo(final S... state) {
+		@SafeVarargs @NonNull public final ActionBuilder goTo(final S... state) {
 			requireNonNull(state);
 			checkArgument(state.length > 0, "Empty set of targets.");
 
@@ -422,10 +441,9 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		 *
 		 * @return a state machine builder.
 		 */
-		@NonNull
-		public StateMachineServiceBuilder<S, E> commit() {
-			checkState(event != null, "Event not provided.");
-			checkState(exit != null, "Transition targets not provided.");
+		@NonNull public StateMachineServiceBuilder<S, E> commit() {
+			checkState(nonNull(event), "Event not provided.");
+			checkState(nonNull(exit), "Transition targets not provided.");
 			checkState(!exit.isEmpty(), "Transition targets not provided.");
 
 			transitions.put(entry, event, exit);
@@ -439,7 +457,8 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 	 *
 	 * @author AGH AgE Team
 	 */
-	public class AnyStateActionBuilder {
+	@SuppressWarnings("InstanceMethodNamingConvention")
+	public final class AnyStateActionBuilder {
 
 		@Nullable private E event;
 
@@ -455,11 +474,10 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		 *
 		 * @return this action builder.
 		 */
-		@NonNull
-		public AnyStateActionBuilder on(final E initiatingEvent) {
+		@NonNull public AnyStateActionBuilder on(final E initiatingEvent) {
 			requireNonNull(initiatingEvent);
-			if (event != null) {
-				checkState(exit != null, "Declaring new event without configuring previous.");
+			if (nonNull(event)) {
+				checkState(nonNull(exit), "Declaring new event without configuring previous.");
 				noStateTransitions.put(event, exit);
 				noStateActions.put(event, action);
 				event = null;
@@ -478,8 +496,7 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		 *
 		 * @return this action builder.
 		 */
-		@NonNull
-		public AnyStateActionBuilder execute(final Consumer<FSM<S, E>> actionToExecute) {
+		@NonNull public AnyStateActionBuilder execute(final Consumer<FSM<S, E>> actionToExecute) {
 			action = requireNonNull(actionToExecute);
 			return this;
 		}
@@ -492,8 +509,7 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		 *
 		 * @return this action builder.
 		 */
-		@SafeVarargs @NonNull
-		public final AnyStateActionBuilder goTo(final S... state) {
+		@SafeVarargs @NonNull public final AnyStateActionBuilder goTo(final S... state) {
 			requireNonNull(state);
 			checkArgument(state.length > 0, "Empty set of targets.");
 
@@ -506,10 +522,9 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		 *
 		 * @return a state machine builder.
 		 */
-		@NonNull
-		public StateMachineServiceBuilder<S, E> commit() {
-			checkState(event != null, "Event not provided.");
-			checkState(exit != null, "Transition targets not provided.");
+		@NonNull public StateMachineServiceBuilder<S, E> commit() {
+			checkState(nonNull(event), "Event not provided.");
+			checkState(nonNull(exit), "Transition targets not provided.");
 			checkState(!exit.isEmpty(), "Transition targets not provided.");
 
 			noStateTransitions.put(event, exit);
@@ -523,11 +538,14 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 	 *
 	 * @author AGH AgE Team
 	 */
-	public class FailureBehaviorBuilder {
+	@SuppressWarnings("InstanceMethodNamingConvention")
+	public final class FailureBehaviorBuilder {
 
 		@MonotonicNonNull private E event;
 
-		@MonotonicNonNull private Consumer<List<Throwable>> function;
+		@MonotonicNonNull private Consumer<Throwable> function;
+
+		FailureBehaviorBuilder() {}
 
 		/**
 		 * Declares which event should be fired when failure occurs.
@@ -537,20 +555,20 @@ public class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<E>> {
 		 *
 		 * @return a state machine builder.
 		 */
-		@NonNull
-		public StateMachineServiceBuilder<S, E> fireAndCall(@NonNull final E eventToFire,
-		                                                    @NonNull final Consumer<List<Throwable>> exceptionHandler) {
-
+		@NonNull public StateMachineServiceBuilder<S, E> fireAndCall(@NonNull final E eventToFire, @NonNull
+		final Consumer<Throwable> exceptionHandler) {
 			event = requireNonNull(eventToFire);
 			function = requireNonNull(exceptionHandler);
 			return StateMachineServiceBuilder.this;
 		}
 
-		@Nullable E getEvent() {
+		@NonNull E event() {
+			assert nonNull(event);
 			return event;
 		}
 
-		@Nullable Consumer<List<Throwable>> getFunction() {
+		@NonNull Consumer<Throwable> function() {
+			assert nonNull(function);
 			return function;
 		}
 	}

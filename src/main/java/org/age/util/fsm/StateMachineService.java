@@ -1,5 +1,7 @@
 package org.age.util.fsm;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+
 /**
  * A FSM-based service implementation.
  * <p>
@@ -19,7 +21,7 @@ public interface StateMachineService<S extends Enum<S>, E extends Enum<E>> exten
 	 *
 	 * @param event an event to fire.
 	 */
-	void fire(E event);
+	void fire(@NonNull E event);
 
 	/**
 	 * Returns whether the service is isRunning.
@@ -27,23 +29,46 @@ public interface StateMachineService<S extends Enum<S>, E extends Enum<E>> exten
 	boolean isRunning();
 
 	/**
-	 * Tells whether the machine is in a given state.
+	 * Checks atomically whether the service is in the given state.
 	 *
-	 * @param state a state to check.
+	 * @param state
+	 * 		a state to check.
+	 *
+	 * @return true if the service is in the given state, false otherwise.
 	 */
-	boolean isInState(S state);
-
-	/**
-	 * Tells whether the machine is already isTerminated.
-	 **/
-	boolean isTerminated();
-
-	boolean isTerminating();
-
-	void shutdown();
+	boolean isInState(@NonNull S state);
 
 	/**
 	 * Returns the current state of the machine.
 	 */
-	S getCurrentState();
+	@NonNull S currentState();
+
+	/**
+	 * Tells whether the machine has failed.
+	 */
+	boolean isFailed();
+
+	/**
+	 * Tells whether the machine is already terminated.
+	 **/
+	boolean isTerminated();
+
+	/**
+	 * Shutdowns and cleans up the service.
+	 *
+	 * @throws IllegalStateException
+	 * 		if service has not terminated yet.
+	 *
+	 * @see #isTerminated()
+	 */
+	void shutdown();
+
+	/**
+	 * Shutdowns and cleans up the service even if it have not terminate yet.
+	 *
+	 * @see #isTerminated()
+	 * @see #shutdown()
+	 */
+	void forceShutdown();
+
 }

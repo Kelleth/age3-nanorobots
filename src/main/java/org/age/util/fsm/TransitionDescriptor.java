@@ -5,6 +5,7 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.requireNonNull;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -30,7 +31,8 @@ final class TransitionDescriptor<S extends Enum<S>, E extends Enum<E>> {
 		throw new IllegalTransitionException("Transition is illegal.");
 	};
 
-	public static final TransitionDescriptor<?, ?> NULL = new TransitionDescriptor(null, null, null, ILLEGAL_ACTION);
+	public static final TransitionDescriptor<?, ?> NULL = new TransitionDescriptor(null, null, Collections.emptySet(),
+	                                                                               ILLEGAL_ACTION);
 
 	public static final Consumer<?> EMPTY_ACTION = fsm -> {};
 
@@ -40,17 +42,17 @@ final class TransitionDescriptor<S extends Enum<S>, E extends Enum<E>> {
 
 	@NonNull private final Consumer<FSM<S, E>> action;
 
-	@Nullable private final Set<S> target;
+	@NonNull private final Set<S> target;
 
-	TransitionDescriptor(@Nullable final S initial, @Nullable final E event, @Nullable final Collection<S> target,
+	TransitionDescriptor(@Nullable final S initial, @Nullable final E event, @NonNull final Collection<S> target,
 	                     @Nullable final Consumer<FSM<S, E>> action) {
 		this.initial = initial;
 		this.event = event;
 		this.action = isNull(action) ? (Consumer<FSM<S, E>>)EMPTY_ACTION : action;
-		this.target = isNull(target) ? null : ImmutableSet.copyOf(target);
+		this.target = ImmutableSet.copyOf(requireNonNull(target));
 	}
 
-	@NonNull public static <V extends Enum<V>, Z extends Enum<Z>> TransitionDescriptor<V, Z> nullDescriptor() {
+	@NonNull static <V extends Enum<V>, Z extends Enum<Z>> TransitionDescriptor<V, Z> nullDescriptor() {
 		return (TransitionDescriptor<V, Z>)NULL;
 	}
 
@@ -58,7 +60,7 @@ final class TransitionDescriptor<S extends Enum<S>, E extends Enum<E>> {
 		return action;
 	}
 
-	@Nullable Set<S> target() {
+	@NonNull Set<S> target() {
 		return target;
 	}
 

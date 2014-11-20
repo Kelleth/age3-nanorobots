@@ -167,7 +167,7 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 
 			.withEventBus(eventBus)
 			//.notifyWithType(LifecycleStateChangedEvent.class)
-			.shutdownWhenTerminated().build();
+			.build();
 		//@formatter:on
 
 		// Obtain dependencies
@@ -388,10 +388,10 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 		}
 	}
 
-	private class ExceptionHandler implements Consumer<List<Throwable>> {
+	private class ExceptionHandler implements Consumer<Throwable> {
 
-		@Override public void accept(final List<Throwable> throwables) {
-
+		@Override public void accept(final Throwable throwable) {
+			log.error("Exception", throwable);
 		}
 	}
 }
