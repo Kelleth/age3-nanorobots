@@ -5,23 +5,25 @@
 
 package org.age.console;
 
-import java.io.IOException;
+import static java.util.Objects.nonNull;
+
+import org.age.services.lifecycle.NodeLifecycleService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
-import org.age.services.lifecycle.NodeLifecycleService;
+import java.io.IOException;
 
 /**
  * Bootstraper for the console.
  */
-public final class Bootstrapper {
+public final class ConsoleBootstrapper {
 
-	private static final Logger log = LoggerFactory.getLogger(Bootstrapper.class);
+	private static final Logger log = LoggerFactory.getLogger(ConsoleBootstrapper.class);
 
-	private Bootstrapper() {}
+	private ConsoleBootstrapper() {}
 
 	public static void main(final String... args) {
 		NodeLifecycleService lifecycleService = null;
@@ -40,7 +42,7 @@ public final class Bootstrapper {
 			log.info("Finishing.");
 
 			log.debug("Waiting for NodeLifecycleService to terminate.");
-			if (lifecycleService != null) {
+			if (nonNull(lifecycleService)) {
 				lifecycleService.awaitTermination();
 			}
 		}

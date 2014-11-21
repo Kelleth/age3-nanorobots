@@ -81,7 +81,7 @@ task(console, dependsOn: 'classes') << {
             '-enableassertions',
             '-cp', classpath.collect().join(System.getProperty('path.separator')),
             '-Dlogback.configurationFile=org/age/console/logback.groovy',
-            'org.age.console.Bootstrapper',
+            'org.age.console.ConsoleBootstrapper',
     ]
 
     def proc = new ProcessBuilder(command)

@@ -5,23 +5,27 @@
 
 package org.age.console.command;
 
-import java.io.PrintWriter;
-import java.util.Optional;
-
-import javax.inject.Inject;
-import javax.inject.Named;
-
-import org.jgrapht.DirectedGraph;
-import org.jgrapht.graph.DefaultEdge;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.age.services.topology.TopologyService;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+
 import jline.console.ConsoleReader;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.jgrapht.DirectedGraph;
+import org.jgrapht.graph.DefaultEdge;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.PrintWriter;
+import java.util.Optional;
+
+import javax.inject.Inject;
+import javax.inject.Named;
 
 /**
  * Command for getting and configuring topology of the cluster.
@@ -30,13 +34,15 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 @Parameters(commandNames = "topology", commandDescription = "Topology management", optionPrefixes = "--")
 public class TopologyCommand implements Command {
 
+	private static final Logger log = LoggerFactory.getLogger(TopologyCommand.class);
+
 	@Inject @Named("non-participating") private TopologyService topologyService;
 
 	@Parameter(names = "--info") private boolean info;
 
 
-	@Override
-	public boolean execute(final JCommander commander, final ConsoleReader reader, final PrintWriter printWriter) {
+	@Override public boolean execute(@NonNull final JCommander commander, @NonNull final ConsoleReader reader,
+	                                 @NonNull final PrintWriter printWriter) {
 		if (info) {
 			info(printWriter);
 		}
@@ -64,8 +70,7 @@ public class TopologyCommand implements Command {
 		printWriter.println("}");
 	}
 
-	@Override
-	public String toString() {
+	@Override public String toString() {
 		return toStringHelper(this).toString();
 	}
 }

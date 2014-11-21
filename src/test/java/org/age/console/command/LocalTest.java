@@ -29,7 +29,7 @@ public final class LocalTest {
 
 	@Mock private NodeIdentityService identityService;
 
-	@InjectMocks private Local localCommand;
+	@InjectMocks private LocalCommand localCommandCommand;
 
 	@BeforeMethod
 	public void setUp() {
@@ -45,8 +45,8 @@ public final class LocalTest {
 
 	@Test
 	public void testInfo() {
-		localCommand.setInfo(true);
-		localCommand.execute(null, null, printWriter);
+		localCommandCommand.setInfo(true);
+		localCommandCommand.execute(null, null, printWriter);
 
 		final String output = stringWriter.toString();
 

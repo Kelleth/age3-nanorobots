@@ -1,18 +1,21 @@
 /*
  * Created: 2014-10-09
- * $Id$
  */
 
 package org.age.console.command;
 
-import java.io.PrintWriter;
-
 import com.beust.jcommander.JCommander;
+
 import jline.console.ConsoleReader;
+
+import org.checkerframework.checker.nullness.qual.NonNull;
+
+import java.io.IOException;
+import java.io.PrintWriter;
 
 /**
  * Interface for commands used by the console.
- * <p/>
+ *
  * Each implementing class should be annotated using {@link com.beust.jcommander.Parameters} and {@link
  * com.beust.jcommander.Parameter} annotations.
  */
@@ -31,5 +34,6 @@ public interface Command {
 	 *
 	 * @return True if console should continue, false if the console should raise error or exit.
 	 */
-	boolean execute(JCommander commander, ConsoleReader reader, PrintWriter printWriter);
+	boolean execute(@NonNull JCommander commander, @NonNull ConsoleReader reader, @NonNull PrintWriter printWriter)
+			throws IOException;
 }
