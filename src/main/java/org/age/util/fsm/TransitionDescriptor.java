@@ -4,15 +4,15 @@ import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.Objects.requireNonNull;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Set;
-import java.util.function.Consumer;
-
 import com.google.common.collect.ImmutableSet;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * A descriptor of the transition in the transition table.

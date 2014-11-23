@@ -9,11 +9,10 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.age.compute.api.WorkerAddress;
 
-import java.util.Base64;
+import org.checkerframework.checker.igj.qual.Immutable;
+
 import java.util.Objects;
 import java.util.UUID;
-
-import org.checkerframework.checker.igj.qual.Immutable;
 
 import javax.annotation.concurrent.ThreadSafe;
 

@@ -5,19 +5,19 @@
 
 package org.age.example;
 
-import java.util.concurrent.TimeUnit;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
-import javax.inject.Inject;
+import org.age.compute.api.BroadcastMessenger;
+import org.age.compute.api.MessageListener;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.age.compute.api.BroadcastMessenger;
-import org.age.compute.api.MessageListener;
+import java.util.concurrent.TimeUnit;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import javax.inject.Inject;
 
 /**
  * The simplest possible computation. Completely detached and having no dependencies and no friends.

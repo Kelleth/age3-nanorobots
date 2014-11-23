@@ -5,10 +5,10 @@
 
 package org.age.example;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
  * The simplest possible computation. Completely detached and having no dependencies and no friends.

@@ -7,7 +7,7 @@ package org.age.console;
 
 import static java.util.Objects.nonNull;
 
-import org.age.services.lifecycle.NodeLifecycleService;
+import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,10 +26,10 @@ public final class ConsoleBootstrapper {
 	private ConsoleBootstrapper() {}
 
 	public static void main(final String... args) {
-		NodeLifecycleService lifecycleService = null;
+		DefaultNodeLifecycleService lifecycleService = null;
 
 		try (final ConfigurableApplicationContext context = new ClassPathXmlApplicationContext("spring-console.xml")) {
-			lifecycleService = context.getBean(NodeLifecycleService.class);
+			lifecycleService = context.getBean(DefaultNodeLifecycleService.class);
 			context.registerShutdownHook();
 
 			log.info("Starting console.");

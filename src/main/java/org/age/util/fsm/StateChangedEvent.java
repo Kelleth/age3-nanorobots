@@ -3,11 +3,11 @@ package org.age.util.fsm;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-import java.time.LocalDateTime;
-import java.util.Objects;
-
 import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.NonNull;
+
+import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * An event describing a FSM state change.

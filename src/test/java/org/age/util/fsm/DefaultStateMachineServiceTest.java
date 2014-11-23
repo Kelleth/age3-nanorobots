@@ -3,15 +3,15 @@ package org.age.util.fsm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.util.Lists.newArrayList;
 
-import java.util.List;
-import java.util.function.Consumer;
-
 import com.google.common.eventbus.EventBus;
 
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.util.List;
+import java.util.function.Consumer;
 
 public final class DefaultStateMachineServiceTest {
 	private enum State {

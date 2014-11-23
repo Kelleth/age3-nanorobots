@@ -27,5 +27,5 @@
 	      class="com.google.common.eventbus.EventBus"/>
 
 	<bean id="worker"
-	      class="org.age.services.worker.WorkerService"/>
+	      class="org.age.services.worker.internal.DefaultWorkerService"/>
 </beans>

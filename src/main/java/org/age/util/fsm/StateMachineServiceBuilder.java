@@ -37,17 +37,8 @@ import static com.google.common.collect.Maps.newEnumMap;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
-import static org.springframework.util.Assert.notNull;
 
 import org.age.annotation.ForTestsOnly;
-
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Consumer;
 
 import com.google.common.collect.ArrayTable;
 import com.google.common.collect.ImmutableSet;
@@ -60,6 +51,13 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * A builder of {@link DefaultStateMachineService} instances. It offers a simple, flexible interface for creation of

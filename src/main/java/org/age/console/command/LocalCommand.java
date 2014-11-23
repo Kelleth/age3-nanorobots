@@ -8,7 +8,7 @@ package org.age.console.command;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.age.annotation.ForTestsOnly;
-import org.age.services.identity.NodeIdentity;
+import org.age.services.identity.NodeDescriptor;
 import org.age.services.identity.NodeIdentityService;
 
 import com.beust.jcommander.JCommander;
@@ -49,10 +49,11 @@ public class LocalCommand implements Command {
 
 
 	private void info(final PrintWriter printWriter) {
-		final NodeIdentity identity = identityService.nodeIdentity();
+		final NodeDescriptor identity = identityService.descriptor();
 		printWriter.println("Local node info = {");
 		printWriter.println("\tid = " + identity.id());
 		printWriter.println("\ttype = " + identity.type());
+		printWriter.println("\tservices = " + identity.services());
 		printWriter.println("}");
 	}
 

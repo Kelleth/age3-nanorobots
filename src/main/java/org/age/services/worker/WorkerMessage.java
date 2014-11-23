@@ -8,7 +8,6 @@ package org.age.services.worker;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static java.util.Collections.emptySet;
 import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.ImmutableSet;
@@ -18,7 +17,6 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 

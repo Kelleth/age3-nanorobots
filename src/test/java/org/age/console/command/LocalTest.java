@@ -4,18 +4,18 @@ package org.age.console.command;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import org.age.services.identity.NodeIdentity;
+import org.age.services.identity.NodeDescriptor;
 import org.age.services.identity.NodeIdentityService;
 import org.age.services.identity.NodeType;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
 
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 public final class LocalTest {
 
@@ -25,7 +25,7 @@ public final class LocalTest {
 
 	private StringWriter stringWriter;
 
-	@Mock private NodeIdentity identity;
+	@Mock private NodeDescriptor identity;
 
 	@Mock private NodeIdentityService identityService;
 
@@ -35,7 +35,7 @@ public final class LocalTest {
 	public void setUp() {
 		MockitoAnnotations.initMocks(this);
 
-		when(identityService.nodeIdentity()).thenReturn(identity);
+		when(identityService.descriptor()).thenReturn(identity);
 		when(identity.id()).thenReturn(NODE_ID);
 		when(identity.type()).thenReturn(NodeType.UNKNOWN);
 

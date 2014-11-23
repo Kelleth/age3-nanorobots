@@ -7,8 +7,8 @@ package org.age.console.command;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
-import org.age.services.discovery.HazelcastDiscoveryService;
-import org.age.services.identity.NodeIdentity;
+import org.age.services.discovery.DiscoveryService;
+import org.age.services.identity.NodeDescriptor;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -35,7 +35,7 @@ public class ClusterCommand implements Command {
 
 	private static final Logger log = LoggerFactory.getLogger(ClusterCommand.class);
 
-	@Inject private HazelcastDiscoveryService discoveryService;
+	@Inject private DiscoveryService discoveryService;
 
 	@Parameter(names = "--nodes") private boolean nodes;
 
@@ -52,7 +52,7 @@ public class ClusterCommand implements Command {
 
 	private void nodes(final PrintWriter printWriter) {
 		log.debug("Printing information about nodes.");
-		final Set<NodeIdentity> neighbours = discoveryService.getMembers();
+		final Set<NodeDescriptor> neighbours = discoveryService.allMembers();
 		neighbours.forEach(printWriter::println);
 	}
 

@@ -1,10 +1,9 @@
 package org.age.services.topology.processors;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import org.age.services.identity.NodeIdentity;
+import org.age.services.identity.NodeType;
+import org.age.services.identity.internal.NodeDescriptor;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -14,6 +13,8 @@ import org.jgrapht.graph.DefaultEdge;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.util.Collections;
 
 public final class FullyConnectedWithLocalLoopsTopologyProcessorTest {
 
@@ -29,11 +30,10 @@ public final class FullyConnectedWithLocalLoopsTopologyProcessorTest {
 
 	@Test public void testSingleNode() {
 		final String nodeId = "1";
-		final NodeIdentity nodeIdentity = mock(NodeIdentity.class);
-		when(nodeIdentity.id()).thenReturn(nodeId);
-		final ImmutableSet<NodeIdentity> identities = ImmutableSet.of(nodeIdentity);
+		final NodeDescriptor nodeDescriptor = new NodeDescriptor(nodeId, NodeType.UNKNOWN, Collections.emptySet());
+		final ImmutableSet<NodeDescriptor> identities = ImmutableSet.of(nodeDescriptor);
 
-		final DirectedGraph<String, DefaultEdge> graph = processor.getGraph(identities);
+		final DirectedGraph<String, DefaultEdge> graph = processor.createGraphFrom(identities);
 
 		assertThat(graph.containsVertex(nodeId)).isTrue();
 		assertThat(graph.inDegreeOf(nodeId)).isEqualTo(1);
@@ -44,13 +44,11 @@ public final class FullyConnectedWithLocalLoopsTopologyProcessorTest {
 	@Test public void testTwoNodes() {
 		final String node1Id = "1";
 		final String node2Id = "2";
-		final NodeIdentity node1Identity = mock(NodeIdentity.class);
-		final NodeIdentity node2Identity = mock(NodeIdentity.class);
-		when(node1Identity.id()).thenReturn(node1Id);
-		when(node2Identity.id()).thenReturn(node2Id);
-		final ImmutableSet<NodeIdentity> identities = ImmutableSet.of(node1Identity, node2Identity);
+		final NodeDescriptor node1Identity = new NodeDescriptor(node1Id, NodeType.UNKNOWN, Collections.emptySet());
+		final NodeDescriptor node2Identity = new NodeDescriptor(node2Id, NodeType.UNKNOWN, Collections.emptySet());
+		final ImmutableSet<NodeDescriptor> identities = ImmutableSet.of(node1Identity, node2Identity);
 
-		final DirectedGraph<String, DefaultEdge> graph = processor.getGraph(identities);
+		final DirectedGraph<String, DefaultEdge> graph = processor.createGraphFrom(identities);
 
 		assertThat(graph.containsVertex(node1Id)).isTrue();
 		assertThat(graph.inDegreeOf(node1Id)).isEqualTo(2);

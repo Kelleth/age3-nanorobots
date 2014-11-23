@@ -3,14 +3,14 @@ package org.age.util.fsm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Consumer;
-
 import com.google.common.collect.Table;
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 
 public final class StateMachineServiceBuilderTest {
 

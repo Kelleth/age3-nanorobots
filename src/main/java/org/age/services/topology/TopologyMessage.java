@@ -5,17 +5,16 @@
 
 package org.age.services.topology;
 
-import java.io.Serializable;
-import java.util.Optional;
-
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Preconditions.checkArgument;
+import java.io.Serializable;
+import java.util.Optional;
 
 @Immutable
 public class TopologyMessage implements Serializable {

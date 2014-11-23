@@ -1,16 +1,20 @@
 /*
  * Created: 2014-08-21
- * $Id$
  */
 
-package org.age.services.topology;
+package org.age.services.topology.internal;
 
-import java.util.Optional;
-import java.util.Set;
+import org.age.services.discovery.DiscoveryService;
+import org.age.services.identity.NodeDescriptor;
+import org.age.services.topology.TopologyMessage;
+import org.age.services.topology.TopologyService;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Named;
+import com.google.common.eventbus.EventBus;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
+import com.hazelcast.core.ITopic;
+import com.hazelcast.core.Message;
+import com.hazelcast.core.MessageListener;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -19,15 +23,12 @@ import org.jgrapht.graph.DefaultEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.age.services.discovery.HazelcastDiscoveryService;
-import org.age.services.identity.NodeIdentity;
+import java.util.Optional;
+import java.util.Set;
 
-import com.google.common.eventbus.EventBus;
-import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
-import com.hazelcast.core.ITopic;
-import com.hazelcast.core.Message;
-import com.hazelcast.core.MessageListener;
+import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+import javax.inject.Named;
 
 @Named("non-participating")
 public class NonParticipatingTopologyService implements TopologyService {
@@ -40,7 +41,7 @@ public class NonParticipatingTopologyService implements TopologyService {
 
 	@Inject @MonotonicNonNull private HazelcastInstance hazelcastInstance;
 
-	@Inject @MonotonicNonNull private HazelcastDiscoveryService discoveryService;
+	@Inject private @MonotonicNonNull DiscoveryService discoveryService;
 
 	@Inject @MonotonicNonNull private EventBus eventBus;
 
@@ -78,8 +79,8 @@ public class NonParticipatingTopologyService implements TopologyService {
 		return Optional.ofNullable((String)runtimeConfig.get(ConfigKeys.TOPOLOGY_TYPE));
 	}
 
-	@NonNull protected Set<@NonNull NodeIdentity> getComputeNodes() {
-		return discoveryService.getMembers("type = 'compute'");
+	@NonNull protected Set<@NonNull NodeDescriptor> getComputeNodes() {
+		return discoveryService.membersMatching("type = 'compute'");
 	}
 
 	private static class ConfigKeys {

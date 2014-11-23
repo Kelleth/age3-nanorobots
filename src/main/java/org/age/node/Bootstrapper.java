@@ -5,12 +5,12 @@
 
 package org.age.node;
 
+import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-
-import org.age.services.lifecycle.NodeLifecycleService;
 
 public final class Bootstrapper {
 
@@ -21,10 +21,10 @@ public final class Bootstrapper {
 
 	public static void main(final String... args) {
 
-		NodeLifecycleService lifecycleService = null;
+		DefaultNodeLifecycleService lifecycleService = null;
 		try (final ConfigurableApplicationContext context = new ClassPathXmlApplicationContext("spring-node.xml")) {
 			context.registerShutdownHook();
-			lifecycleService = context.getBean(NodeLifecycleService.class);
+			lifecycleService = context.getBean(DefaultNodeLifecycleService.class);
 			lifecycleService.awaitTermination();
 		} finally {
 			log.info("Finishing.");

@@ -10,8 +10,6 @@ import org.age.services.topology.TopologyService;
 import org.age.services.worker.WorkerMessage;
 import org.age.services.worker.WorkerMessage.Type;
 
-import java.io.Serializable;
-
 import com.google.common.collect.ImmutableSet;
 
 import org.mockito.ArgumentCaptor;
@@ -20,6 +18,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.io.Serializable;
 
 public final class DefaultBroadcastMessengerTest {
 

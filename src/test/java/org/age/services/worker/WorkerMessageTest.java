@@ -3,11 +3,11 @@ package org.age.services.worker;
 import static com.google.common.collect.Sets.newHashSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.Serializable;
-
 import com.google.common.collect.ImmutableSet;
 
 import org.testng.annotations.Test;
+
+import java.io.Serializable;
 
 public final class WorkerMessageTest {
 

@@ -5,11 +5,11 @@
 
 package org.age.compute.api;
 
+import org.checkerframework.checker.igj.qual.Immutable;
+
 import java.io.Serializable;
 
 import javax.annotation.concurrent.ThreadSafe;
-
-import org.checkerframework.checker.igj.qual.Immutable;
 
 /**
  * A compute-level address for workers.

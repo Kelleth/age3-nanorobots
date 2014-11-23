@@ -1,44 +1,25 @@
 /*
  * Created: 2014-08-21
- * $Id$
  */
 
-package org.age.services.topology;
+package org.age.services.topology.internal;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
+import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
+import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
-
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Named;
-
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
-import org.jgrapht.DirectedGraph;
-import org.jgrapht.graph.DefaultEdge;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.SmartLifecycle;
+import static org.age.services.topology.TopologyMessage.Type.MASTER_ELECTED;
+import static org.age.services.topology.TopologyMessage.Type.TOPOLOGY_SELECTED;
 
 import org.age.services.discovery.DiscoveryEvent;
-import org.age.services.discovery.HazelcastDiscoveryService;
-import org.age.services.identity.NodeIdentity;
+import org.age.services.discovery.DiscoveryService;
+import org.age.services.identity.NodeDescriptor;
 import org.age.services.identity.NodeIdentityService;
+import org.age.services.topology.TopologyMessage;
+import org.age.services.topology.TopologyService;
 import org.age.services.topology.processors.TopologyProcessor;
 import org.age.util.fsm.FSM;
 import org.age.util.fsm.StateMachineService;
 import org.age.util.fsm.StateMachineServiceBuilder;
-
-import static org.age.services.topology.TopologyMessage.Type.MASTER_ELECTED;
-import static org.age.services.topology.TopologyMessage.Type.TOPOLOGY_SELECTED;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
@@ -52,9 +33,26 @@ import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
 
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
-import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jgrapht.DirectedGraph;
+import org.jgrapht.graph.DefaultEdge;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.SmartLifecycle;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
+import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+import javax.inject.Named;
 
 @Named("default")
 public class DefaultTopologyService implements SmartLifecycle, TopologyService {
@@ -97,7 +95,7 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 
 	@Inject @MonotonicNonNull private HazelcastInstance hazelcastInstance;
 
-	@Inject @MonotonicNonNull private HazelcastDiscoveryService discoveryService;
+	@Inject private @MonotonicNonNull DiscoveryService discoveryService;
 
 	@Inject @MonotonicNonNull private NodeIdentityService identityService;
 
@@ -121,14 +119,14 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 
 	@Nullable private DirectedGraph<String, DefaultEdge> cachedTopology;
 
-	@PostConstruct public void construct() {
+	@PostConstruct private void construct() {
 		log.debug("Constructing DefaultTopologyService.");
 		//@formatter:off
 		service = StateMachineServiceBuilder
 			.withStatesAndEvents(State.class, Event.class)
 			.withName("topology")
 			.startWith(State.OFFLINE)
-			.terminateIn(State.TERMINATED)
+			.terminateIn(State.TERMINATED, State.FAILED)
 
 			.in(State.OFFLINE)
 				.on(Event.START).execute(this::internalStart).goTo(State.STARTING)
@@ -166,7 +164,6 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 				.fireAndCall(Event.ERROR, new ExceptionHandler())
 
 			.withEventBus(eventBus)
-			//.notifyWithType(LifecycleStateChangedEvent.class)
 			.build();
 		//@formatter:on
 
@@ -176,7 +173,7 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 	}
 
 	@Override public boolean isAutoStartup() {
-		return true;
+		return identityService.isCompute();
 	}
 
 	@Override public void stop(final Runnable callback) {
@@ -233,9 +230,9 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 	private void electMaster(@NonNull final FSM<State, Event> fsm) {
 		log.debug("Locally selecting master.");
 
-		final Set<@NonNull NodeIdentity> computeNodes = getComputeNodes();
-		final Optional<NodeIdentity> maxIdentity = computeNodes.parallelStream()
-		                                                       .max(Comparator.comparing(NodeIdentity::id));
+		final Set<@NonNull NodeDescriptor> computeNodes = getComputeNodes();
+		final Optional<NodeDescriptor> maxIdentity = computeNodes.parallelStream()
+		                                                       .max(Comparator.comparing(NodeDescriptor::id));
 		log.debug("Max identity is {}.", maxIdentity);
 
 		assert maxIdentity.isPresent();
@@ -250,12 +247,12 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 				log.debug("Seems to be the first election. Selecting topology.");
 				final Optional<TopologyProcessor> selectedProcessor = topologyProcessors.parallelStream()
 				                                                                        .max(Comparator.comparing(
-						                                                                        TopologyProcessor::getPriority));
+						                                                                        TopologyProcessor::priority));
 				assert selectedProcessor.isPresent();
 
 				currentTopologyProcessor = selectedProcessor.get();
 				log.debug("Selected initial topology: {}.", currentTopologyProcessor);
-				runtimeConfig.put(ConfigKeys.TOPOLOGY_TYPE, currentTopologyProcessor.getName());
+				runtimeConfig.put(ConfigKeys.TOPOLOGY_TYPE, currentTopologyProcessor.name());
 			}
 			listenerKey = runtimeConfig.addEntryListener(new TopologyTypeChangeListener(), ConfigKeys.TOPOLOGY_TYPE,
 			                                             true);
@@ -296,8 +293,8 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 		assert topologyProcessor.isPresent();
 		currentTopologyProcessor = topologyProcessor.get();
 
-		final Set<NodeIdentity> computeNodes = getComputeNodes();
-		cachedTopology = currentTopologyProcessor.getGraph(computeNodes);
+		final Set<NodeDescriptor> computeNodes = getComputeNodes();
+		cachedTopology = currentTopologyProcessor.createGraphFrom(computeNodes);
 		log.debug("Topology: {}.", cachedTopology);
 		runtimeConfig.put(ConfigKeys.TOPOLOGY_GRAPH, cachedTopology);
 		topic.publish(TopologyMessage.createWithoutPayload(TOPOLOGY_SELECTED));
@@ -317,7 +314,7 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 	@NonNull private Optional<TopologyProcessor> getTopologyProcessorWithName(@NonNull final String processorName) {
 		assert processorName != null;
 		return topologyProcessors.parallelStream()
-		                         .filter(processor -> processor.getName().equals(processorName))
+		                         .filter(processor -> processor.name().equals(processorName))
 		                         .findFirst();
 	}
 
@@ -357,8 +354,8 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 		service.fire(Event.MEMBERSHIP_CHANGED);
 	}
 
-	@NonNull protected Set<@NonNull NodeIdentity> getComputeNodes() {
-		return discoveryService.getMembers("type = 'compute'");
+	@NonNull protected Set<@NonNull NodeDescriptor> getComputeNodes() {
+		return discoveryService.membersMatching("type = 'compute'");
 	}
 
 	private static class ConfigKeys {

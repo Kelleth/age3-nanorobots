@@ -5,12 +5,12 @@
 
 package org.age.services.topology;
 
-import java.util.Optional;
-import java.util.Set;
-
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
+
+import java.util.Optional;
+import java.util.Set;
 
 public interface TopologyService {
 

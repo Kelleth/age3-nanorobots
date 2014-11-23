@@ -1,79 +1,50 @@
 /*
- * Created: 2014-08-22
- * $Id$
+ * Created by nnidyu on 22.11.14.
  */
 
 package org.age.services.identity;
 
-import static com.google.common.collect.Sets.newHashSet;
-import static java.util.Objects.requireNonNull;
-
-import org.age.services.worker.WorkerService;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.Set;
-import java.util.UUID;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Named;
+/**
+ * Node identity service is a local service that provides retrospection about the node and defines its identity.
+ */
+public interface NodeIdentityService {
+	/**
+	 * Returns the stringified ID of the node.
+	 */
+	@NonNull String nodeId();
 
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.NoSuchBeanDefinitionException;
-import org.springframework.context.ApplicationContext;
+	/**
+	 * Returns the type of the node.
+	 *
+	 * @see org.age.services.identity.NodeType
+	 */
+	@NonNull NodeType nodeType();
 
-@Named
-public class NodeIdentityService {
+	/**
+	 * Returns the descriptor for the node that contains cached, serializable information from the service.
+	 */
+	@NonNull NodeDescriptor descriptor();
 
-	private static final Logger log = LoggerFactory.getLogger(NodeIdentityService.class);
+	/**
+	 * Returns the set of running services.
+	 */
+	@NonNull Set<@NonNull String> services();
 
-	private final UUID nodeId = UUID.randomUUID();
+	/**
+	 * Tells whether the node is compute node.
+	 *
+	 * A node is compute when it has {@link #nodeType()} equal to {@link NodeType#COMPUTE}.
+	 */
+	boolean isCompute();
 
-	private final String encodedNodeId = nodeId.toString();
-
-	@NonNull private NodeType nodeType = NodeType.UNKNOWN;
-
-	@Inject @MonotonicNonNull private ApplicationContext applicationContext;
-
-	@PostConstruct private void construct() {
-		log.debug("Constructing identity service.");
-		try {
-			applicationContext.getBean(WorkerService.class);
-			nodeType = NodeType.COMPUTE;
-		} catch (final NoSuchBeanDefinitionException ignored) {
-			nodeType = NodeType.SATELLITE;
-		}
-		log.info("Node type: {}.", nodeType);
-		log.info("Node id: {}.", nodeId);
-	}
-
-	@NonNull
-	public String nodeId() {
-		return nodeId.toString();
-	}
-
-	@NonNull
-	public NodeType nodeType() {
-		return nodeType;
-	}
-
-	@NonNull
-	public NodeIdentity nodeIdentity() {
-		return new NodeIdentity(encodedNodeId, nodeType, services());
-	}
-
-	@NonNull
-	public Set<String> services() {
-		return newHashSet();
-	}
-
-	public boolean isCompute() {
-		return is(NodeType.COMPUTE);
-	}
-
-	public boolean is(@NonNull final NodeType type) {
-		return nodeType == requireNonNull(type);
-	}
+	/**
+	 * Checks whether node has a given type.
+	 *
+	 * @param type a type to check.
+	 */
+	boolean is(@NonNull NodeType type);
 }

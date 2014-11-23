@@ -35,9 +35,9 @@ public final class DefaultBroadcastMessenger implements BroadcastMessenger, Comm
 
 	private final Set<MessageListener<Serializable>> listeners = newConcurrentHashSet();
 
-	@MonotonicNonNull @Named("default") @Inject private TopologyService topologyService;
+	@Inject @Named("default") @MonotonicNonNull private TopologyService topologyService;
 
-	@MonotonicNonNull @Inject private WorkerCommunication workerCommunication;
+	@Inject @MonotonicNonNull private WorkerCommunication workerCommunication;
 
 	@Override public void send(@NonNull final Serializable message) {
 		log.debug("Sending message {}.", message);

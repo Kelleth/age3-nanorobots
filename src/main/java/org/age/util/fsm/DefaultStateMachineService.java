@@ -13,6 +13,17 @@ import static org.age.util.Runnables.swallowingRunnable;
 
 import org.age.annotation.ForTestsOnly;
 
+import com.google.common.collect.Table;
+import com.google.common.eventbus.EventBus;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
+import org.checkerframework.checker.lock.qual.GuardedBy;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.EnumSet;
@@ -26,17 +37,6 @@ import java.util.concurrent.locks.StampedLock;
 import java.util.function.Consumer;
 
 import javax.annotation.concurrent.ThreadSafe;
-
-import com.google.common.collect.Table;
-import com.google.common.eventbus.EventBus;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
-import org.checkerframework.checker.lock.qual.GuardedBy;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A FSM-based service implementation.

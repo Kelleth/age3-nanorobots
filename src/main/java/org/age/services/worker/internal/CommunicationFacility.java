@@ -6,11 +6,11 @@ package org.age.services.worker.internal;
 
 import org.age.services.worker.WorkerMessage;
 
-import java.io.Serializable;
-import java.util.Set;
-
 import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.NonNull;
+
+import java.io.Serializable;
+import java.util.Set;
 
 public interface CommunicationFacility {
 
