@@ -1,13 +1,5 @@
-/**
- * Copyright (C) 2006 - 2012
- *   Pawel Kedzior
- *   Tomasz Kmiecik
- *   Kamil Pietak
- *   Krzysztof Sikora
- *   Adam Wos
- *   Lukasz Faber
- *   Daniel Krzywicki
- *   and other students of AGH University of Science and Technology.
+/*
+ * Copyright (C) 2014 Intelligent Information Systems Group.
  *
  * This file is part of AgE.
  *
