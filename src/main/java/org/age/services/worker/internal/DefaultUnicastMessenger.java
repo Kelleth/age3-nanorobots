@@ -8,6 +8,7 @@ package org.age.services.worker.internal;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Sets.newConcurrentHashSet;
+import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
 import org.age.compute.api.MessageListener;
@@ -43,16 +44,16 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 
 	private final WorkerAddress localWorkerAddress = new DefaultWorkerAddress();
 
-	@Inject @Named("default") @MonotonicNonNull private TopologyService topologyService;
+	@Inject @Named("default") private @MonotonicNonNull TopologyService topologyService;
 
-	@Inject @MonotonicNonNull private WorkerCommunication workerCommunication;
+	@Inject private @MonotonicNonNull WorkerCommunication workerCommunication;
 
 	@PostConstruct private void construct() {
 		log.debug("Initializing local unicast messenger.");
 		workerCommunication.scheduleAtFixedRate(this::broadcastMyAddress, 1L, 5L, TimeUnit.SECONDS);
 	}
 
-	@Override @Immutable @NonNull  public WorkerAddress address() {
+	@Override @Immutable @NonNull public WorkerAddress address() {
 		return localWorkerAddress;
 	}
 
@@ -154,7 +155,7 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 		}
 
 		public boolean isRecipient(@NonNull final WorkerAddress workerAddress) {
-			assert workerAddress != null;
+			assert nonNull(workerAddress);
 			return recipients.contains(workerAddress);
 		}
 

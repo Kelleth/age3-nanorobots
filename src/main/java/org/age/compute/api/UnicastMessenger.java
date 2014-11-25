@@ -44,7 +44,7 @@ public interface UnicastMessenger {
 	<T extends Serializable> void send(@NonNull Set<WorkerAddress> receivers, @NonNull T message);
 
 	/**
-	 * Registers a listener that will receive all incoming messages target for this address (obtained via {@link #initializeBox()}).
+	 * Registers a listener that will receive all incoming messages target for this address (obtained via {@link #address()}).
 	 *
 	 * @param listener a listener to register.
 	 * @param <T> a type of the payload.

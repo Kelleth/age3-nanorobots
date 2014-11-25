@@ -74,6 +74,7 @@ public class CommandIntrospector {
 		                  .getParameters()
 		                  .stream()
 		                  .map(ParameterDescription::getLongestName)
+		                  .filter(s -> s.startsWith(prefix))
 		                  .collect(toSet());
 	}
 

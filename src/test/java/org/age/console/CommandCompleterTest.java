@@ -21,11 +21,13 @@ import java.util.Set;
 
 public final class CommandCompleterTest {
 
-	private final Set<String> commands = ImmutableSet.of("command1", "another", "command2", "different", "three");
+	private final Set<String> commands = ImmutableSet.of("command1", "another", "command2", "different", "three", "test");
 
 	private final Set<String> mainParameters = ImmutableSet.of("--param", "--qwerty", "--min", "--popular");
 
 	private final Set<String> commandParameters = ImmutableSet.of("--paaaa", "--pb", "--another", "--other");
+
+	private final Set<String> testCommandParameters = ImmutableSet.of("--list-examples", "--example", "--config");
 
 	@Mock private CommandIntrospector introspector;
 
@@ -44,6 +46,10 @@ public final class CommandCompleterTest {
 		when(introspector.parametersOfCommandStartingWith(eq("another"), anyString())).thenAnswer(invocation -> {
 			final String prefix = invocation.getArgumentAt(1, String.class);
 			return commandParameters.stream().filter(s -> s.startsWith(prefix)).collect(toSet());
+		});
+		when(introspector.parametersOfCommandStartingWith(eq("test"), anyString())).thenAnswer(invocation -> {
+			final String prefix = invocation.getArgumentAt(1, String.class);
+			return testCommandParameters.stream().filter(s -> s.startsWith(prefix)).collect(toSet());
 		});
 	}
 
@@ -136,5 +142,14 @@ public final class CommandCompleterTest {
 
 		assertThat(position).isEqualTo(buffer.length() - 3);
 		assertThat(candidates).containsOnlyElementsOf(commandParameters.stream().filter(s -> s.startsWith("--p")).collect(toSet()));
+	}
+
+	@Test public void testParametersOfTestCommand_withFragmentOfParameter() {
+		final List<CharSequence> candidates = newArrayList();
+		final String buffer = "test --l";
+		final int position = commandCompleter.complete(buffer, 8, candidates);
+
+		assertThat(position).isEqualTo(buffer.length() - 3);
+		assertThat(candidates).containsOnlyElementsOf(testCommandParameters.stream().filter(s -> s.startsWith("--l")).collect(toSet()));
 	}
 }

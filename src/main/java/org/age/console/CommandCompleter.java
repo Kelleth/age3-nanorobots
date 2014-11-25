@@ -59,24 +59,24 @@ public class CommandCompleter implements Completer {
 			final String command = strings[0];
 			// Fill with parameters
 			if (buffer.charAt(lastPosition) == DASH) {
+				log.debug("After dash.");
 				candidates.addAll(introspector.parametersOfCommand(command));
-				log.debug("Candidates: {}.", candidates);
 				returnPosition = (buffer.charAt(lastPosition - 1) == DASH) ? (cursor - 2) : (cursor - 1);
 			} else if (CharMatcher.WHITESPACE.matches(buffer.charAt(lastPosition))) {
+				log.debug("Whitespace.");
 				candidates.addAll(introspector.parametersOfCommand(command));
-				log.debug("Candidates: {}.", candidates);
 				returnPosition = cursor;
 			} else {
+				log.debug("Starting with: {}.", last);
 				candidates.addAll(introspector.parametersOfCommandStartingWith(command, last));
-				log.debug("Candidates: {}.", candidates);
 				returnPosition = cursor - last.length();
 			}
 		} else {
 			// No command in the beginning - fill with commands
 			candidates.addAll(introspector.commandsStartingWith(last));
-			log.debug("Candidates: {}.", candidates);
 			returnPosition = cursor - last.length();
 		}
+		log.debug("Candidates: {}.", candidates);
 		return returnPosition;
 	}
 

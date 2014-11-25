@@ -1,6 +1,5 @@
 /*
  * Created: 2014-10-07
- * $Id$
  */
 
 package org.age.services.worker;
@@ -8,6 +7,7 @@ package org.age.services.worker;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.ImmutableSet;
@@ -31,6 +31,7 @@ public class WorkerMessage<T extends Serializable> implements Serializable {
 
 	public enum Type {
 		LOAD_CLASS,
+		LOAD_CONFIGURATION,
 		START_COMPUTATION(false),
 		BROADCAST_MESSAGE(true, false),
 		UNICAST_CONTROL(true, false),
@@ -106,8 +107,7 @@ public class WorkerMessage<T extends Serializable> implements Serializable {
 		return new WorkerMessage<>(type, requireNonNull(payload));
 	}
 
-	@NonNull
-	public static <T extends Serializable> WorkerMessage<T> createWithPayload(@NonNull final Type type,
+	@NonNull public static <T extends Serializable> WorkerMessage<T> createWithPayload(@NonNull final Type type,
 	                                                                                   @NonNull
 	                                                                                   final Set<String> recipients,
 	                                                                                   @NonNull final T payload) {
@@ -127,7 +127,7 @@ public class WorkerMessage<T extends Serializable> implements Serializable {
 	}
 
 	@NonNull public <X extends T> X requiredPayload() {
-		checkState(payload != null, "No payload to provide.");
+		checkState(nonNull(payload), "No payload to provide.");
 		return (X)payload;
 	}
 
@@ -144,6 +144,10 @@ public class WorkerMessage<T extends Serializable> implements Serializable {
 	}
 
 	@Override public String toString() {
-		return toStringHelper(this).add("type", type).add("broadcast", broadcast).add("recipients", recipients).addValue(payload).toString();
+		return toStringHelper(this).add("type", type)
+		                           .add("broadcast", broadcast)
+		                           .add("recipients", recipients)
+		                           .addValue(payload)
+		                           .toString();
 	}
 }
