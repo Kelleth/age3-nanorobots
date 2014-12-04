@@ -6,7 +6,7 @@ apply plugin: 'maven-publish'
 
 group = 'org.age'
 sourceCompatibility = 1.8
-version = '0.1-SNAPSHOT'
+version = '0.1'
 
 mainClassName = 'org.age.node.Bootstrapper'
 
@@ -40,34 +40,33 @@ tasks.withType(Test) {
 //}
 
 dependencies {
-    // XXX: All dependencies are dynamic for now. When stabilizing, we should put the specific versions here.
-    testCompile 'org.testng:testng:+'
-    testCompile 'org.mockito:mockito-all:+'
-    testCompile 'org.uncommons:reportng:+'
-    testCompile 'com.google.inject:guice:+'
-    testCompile 'org.assertj:assertj-core:+'
-    testCompile 'org.assertj:assertj-guava:+'
+    testCompile 'org.testng:testng:6.8.8'
+    testCompile 'org.mockito:mockito-all:1.10.8'
+    testCompile 'org.uncommons:reportng:1.1.4'
+    testCompile 'com.google.inject:guice:4.0-beta5'
+    testCompile 'org.assertj:assertj-core:1.7.0'
+    testCompile 'org.assertj:assertj-guava:1.3.0'
 
     compile 'javax.inject:javax.inject:1'
-    compile 'org.springframework:spring-context:+'
-    compile('com.hazelcast:hazelcast:+') {
+    compile 'org.springframework:spring-context:4.1.2.RELEASE'
+    compile('com.hazelcast:hazelcast:3.4-EA') {
         // Not needed and would introduce a lot of duplicated annotations
         exclude group: 'net.sourceforge.findbugs'
     }
-    compile 'com.hazelcast:hazelcast-spring:+'
-    compile 'org.checkerframework:checker-qual:+'
-    compile 'com.google.code.findbugs:jsr305:+'
-    compile 'com.google.guava:guava:+'
-    compile 'org.slf4j:slf4j-api:+'
-    compile 'org.slf4j:jcl-over-slf4j:+'
-    compile 'ch.qos.logback:logback-classic:+'
-    compile 'jline:jline:+'
-    compile 'org.jgrapht:jgrapht-core:+'
-    compile 'com.beust:jcommander:+'
+    compile 'com.hazelcast:hazelcast-spring:3.4-EA'
+    compile 'org.checkerframework:checker-qual:1.8.8'
+    compile 'com.google.code.findbugs:jsr305:3.0.0'
+    compile 'com.google.guava:guava:18.0'
+    compile 'org.slf4j:slf4j-api:1.7.7'
+    compile 'org.slf4j:jcl-over-slf4j:1.7.7'
+    compile 'ch.qos.logback:logback-classic:1.1.2'
+    compile 'jline:jline:2.12'
+    compile 'org.jgrapht:jgrapht-core:0.9.0'
+    compile 'com.beust:jcommander:1.35'
 
-    runtime 'org.codehaus.groovy:groovy-all:+'
+    runtime 'org.codehaus.groovy:groovy-all:2.4.0-beta-4'
 
-    markdownDoclet 'ch.raffael.pegdown-doclet:pegdown-doclet:+'
+    markdownDoclet 'ch.raffael.pegdown-doclet:pegdown-doclet:1.1.1'
 }
 
 task wrapper(type: Wrapper) {
@@ -112,18 +111,38 @@ idea {
     }
 }
 
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+
+            artifact (javadocJar)
+            artifact (sourcesJar)
         }
     }
     repositories {
         maven {
-			credentials {
-				username mavenUser
-				password mavenPassword
-			}
+            if(project.hasProperty( "mavenUser")) {
+                credentials {
+                    username mavenUser
+                    password mavenPassword
+                }
+            }
             if(project.version.endsWith('-SNAPSHOT')) {
                 url "https://repository.age.agh.edu.pl/content/repositories/snapshots"
             } else {
