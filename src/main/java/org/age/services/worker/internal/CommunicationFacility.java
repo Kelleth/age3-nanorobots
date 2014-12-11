@@ -53,4 +53,6 @@ public interface CommunicationFacility {
 	 * Returns a set of message types that this listener wants to subscribe to.
 	 */
 	@NonNull @Immutable Set<WorkerMessage.Type> subscribedTypes();
+
+	void start();
 }

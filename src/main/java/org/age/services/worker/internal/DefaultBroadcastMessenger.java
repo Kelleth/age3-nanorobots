@@ -85,6 +85,10 @@ public final class DefaultBroadcastMessenger implements BroadcastMessenger, Comm
 		return ImmutableSet.of(WorkerMessage.Type.BROADCAST_MESSAGE);
 	}
 
+	@Override public void start() {
+		log.debug("Starting local broadcast messenger.");
+	}
+
 	@Override public <T extends Serializable> void registerListener(@NonNull final MessageListener<T> listener) {
 		log.debug("Adding listener {}.", listener);
 		listeners.add((MessageListener<Serializable>)listener);

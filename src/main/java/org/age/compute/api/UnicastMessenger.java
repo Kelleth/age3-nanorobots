@@ -66,7 +66,7 @@ public interface UnicastMessenger {
 	 * @param listener a listener to register.
 	 * @param <T> a type of the payload.
 	 */
-	<T extends Serializable> void registerListener(@NonNull MessageListener<T> listener);
+	<T extends Serializable> void registerListener(@NonNull UnicastMessageListener<T> listener);
 
 	/**
 	 * Removes the listener.
@@ -74,5 +74,5 @@ public interface UnicastMessenger {
 	 * @param listener a listener to remove.
 	 * @param <T> a type of the payload.
 	 */
-	<T extends Serializable> void removeListener(@NonNull MessageListener<T> listener);
+	<T extends Serializable> void removeListener(@NonNull UnicastMessageListener<T> listener);
 }

@@ -28,7 +28,7 @@ import static com.google.common.collect.Sets.newConcurrentHashSet;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
-import org.age.compute.api.MessageListener;
+import org.age.compute.api.UnicastMessageListener;
 import org.age.compute.api.UnicastMessenger;
 import org.age.compute.api.WorkerAddress;
 import org.age.services.topology.TopologyService;
@@ -46,7 +46,6 @@ import java.io.Serializable;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Named;
 
@@ -55,7 +54,7 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 
 	private static final Logger log = LoggerFactory.getLogger(DefaultUnicastMessenger.class);
 
-	private final Set<MessageListener<Serializable>> listeners = newConcurrentHashSet();
+	private final Set<UnicastMessageListener<Serializable>> listeners = newConcurrentHashSet();
 
 	private final Set<WorkerAddress> computeNeighbours = newConcurrentHashSet();
 
@@ -65,11 +64,6 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 
 	@Inject private @MonotonicNonNull WorkerCommunication workerCommunication;
 
-	@PostConstruct private void construct() {
-		log.debug("Initializing local unicast messenger.");
-		workerCommunication.scheduleAtFixedRate(this::broadcastMyAddress, 1L, 5L, TimeUnit.SECONDS);
-	}
-
 	@Override @Immutable @NonNull public WorkerAddress address() {
 		return localWorkerAddress;
 	}
@@ -78,16 +72,17 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 		return ImmutableSet.copyOf(computeNeighbours);
 	}
 
-	@Override public <T extends Serializable> void send(@NonNull final WorkerAddress receiver,
-	                                                    @NonNull final T message) {
+	@Override
+	public <T extends Serializable> void send(@NonNull final WorkerAddress receiver, @NonNull final T message) {
 		send(ImmutableSet.of(requireNonNull(receiver)), message);
 	}
 
-	@Override public <T extends Serializable> void send(@NonNull final Set<WorkerAddress> receivers,
-	                                                    @NonNull final T message) {
+	@Override
+	public <T extends Serializable> void send(@NonNull final Set<WorkerAddress> receivers, @NonNull final T message) {
 		checkState(isInitialized(), "Messenger was not initialized.");
 
-		final UnicastMessage unicastMessage = new UnicastMessage(requireNonNull(receivers), requireNonNull(message));
+		final UnicastMessage unicastMessage = new UnicastMessage(localWorkerAddress, requireNonNull(receivers),
+		                                                         requireNonNull(message));
 		log.debug("Sending message {}.", unicastMessage);
 		final Set<String> neighbours = topologyService.neighbours();
 		final WorkerMessage<Serializable> workerMessage = WorkerMessage.createWithPayload(
@@ -96,12 +91,12 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 		workerCommunication.sendMessage(workerMessage);
 	}
 
-	@Override public <T extends Serializable> void registerListener(@NonNull final MessageListener<T> listener) {
+	@Override public <T extends Serializable> void registerListener(final @NonNull UnicastMessageListener<T> listener) {
 		log.debug("Adding listener {}.", listener);
-		listeners.add((MessageListener<Serializable>)listener);
+		listeners.add((UnicastMessageListener<Serializable>)listener);
 	}
 
-	@Override public <T extends Serializable> void removeListener(@NonNull final MessageListener<T> listener) {
+	@Override public <T extends Serializable> void removeListener(final @NonNull UnicastMessageListener<T> listener) {
 		log.debug("Removing listener {}.", listener);
 		listeners.remove(listener);
 	}
@@ -119,12 +114,16 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 
 			if (unicastMessage.isRecipient(localWorkerAddress)) {
 				log.debug("Delivering the message {}.", unicastMessage);
-				listeners.parallelStream().forEach(listener -> listener.onMessage(unicastMessage.payload()));
+				listeners.parallelStream()
+				         .forEach(listener -> listener.onMessage(unicastMessage.payload(), unicastMessage.sender()));
 			}
+
+			return true;
 		} else if (workerMessage.hasType(WorkerMessage.Type.UNICAST_CONTROL)) {
 			final WorkerAddress neighbourWorkerAddress = workerMessage.requiredPayload();
 			log.debug("Adding new neighbour: {}.", neighbourWorkerAddress);
 			computeNeighbours.add(neighbourWorkerAddress);
+			return true;
 		}
 
 		return false;
@@ -132,6 +131,11 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 
 	@Override @NonNull public Set<WorkerMessage.Type> subscribedTypes() {
 		return ImmutableSet.of(WorkerMessage.Type.UNICAST_CONTROL, WorkerMessage.Type.UNICAST_MESSAGE);
+	}
+
+	@Override public void start() {
+		log.debug("Starting local unicast messenger.");
+		workerCommunication.scheduleAtFixedRate(this::broadcastMyAddress, 1L, 5L, TimeUnit.SECONDS);
 	}
 
 	private void broadcastMyAddress() {
@@ -158,16 +162,24 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 
 		private static final long serialVersionUID = 8710738856544239311L;
 
+		@NonNull private final WorkerAddress sender;
+
 		@NonNull private final Set<WorkerAddress> recipients;
 
 		@NonNull private final Serializable payload;
 
-		UnicastMessage(final Set<WorkerAddress> recipients, final Serializable payload) {
+		UnicastMessage(final @NonNull WorkerAddress sender, final @NonNull Set<WorkerAddress> recipients,
+		               final @NonNull Serializable payload) {
+			this.sender = requireNonNull(sender);
 			this.recipients = ImmutableSet.copyOf(requireNonNull(recipients));
 			this.payload = requireNonNull(payload);
 		}
 
-		@NonNull public Set<WorkerAddress> recipients() {
+		public @NonNull WorkerAddress sender() {
+			return sender;
+		}
+
+		public @NonNull Set<WorkerAddress> recipients() {
 			return recipients;
 		}
 
@@ -176,7 +188,7 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 			return recipients.contains(workerAddress);
 		}
 
-		@NonNull public Serializable payload() {
+		public @NonNull Serializable payload() {
 			return payload;
 		}
 

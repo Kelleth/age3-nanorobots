@@ -24,7 +24,7 @@ package org.age.example;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
-import org.age.compute.api.MessageListener;
+import org.age.compute.api.UnicastMessageListener;
 import org.age.compute.api.UnicastMessenger;
 import org.age.compute.api.WorkerAddress;
 
@@ -41,7 +41,7 @@ import javax.inject.Inject;
 /**
  * The simplest possible computation. Completely detached and having no dependencies and no friends.
  */
-public final class SimpleWithUnicastCommunication implements Runnable, MessageListener<@NonNull String> {
+public final class SimpleWithUnicastCommunication implements Runnable, UnicastMessageListener<@NonNull String> {
 
 	private static final Logger log = LoggerFactory.getLogger(SimpleWithUnicastCommunication.class);
 
@@ -68,7 +68,7 @@ public final class SimpleWithUnicastCommunication implements Runnable, MessageLi
 			}
 
 			try {
-				TimeUnit.SECONDS.sleep(1);
+				TimeUnit.SECONDS.sleep(1L);
 			} catch (final InterruptedException e) {
 				log.debug("Interrupted.", e);
 				Thread.currentThread().interrupt();
@@ -83,7 +83,7 @@ public final class SimpleWithUnicastCommunication implements Runnable, MessageLi
 		return toStringHelper(this).toString();
 	}
 
-	@Override public void onMessage(@NonNull final String message) {
-		log.info("Message received: {}.", message);
+	@Override public void onMessage(final @NonNull String message, final @NonNull WorkerAddress sender) {
+		log.info("Message received: {} from {}.", message, sender);
 	}
 }

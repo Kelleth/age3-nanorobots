@@ -270,6 +270,8 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 
 		log.debug("Starting task from class {}.", currentClassName);
 
+		communicationFacilities.forEach(CommunicationFacility::start);
+
 		taskLock.writeLock().lock();
 		try {
 			currentContext.start();

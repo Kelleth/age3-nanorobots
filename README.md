@@ -30,13 +30,13 @@ To run the console node (that provides a basic CLI for the AgE) just run:
 On Linux:
 
 ```
-./gradlew console
+./gradlew --no-daemon console
 ```
 
 Or on Windows:
 
 ```
-gradlew.bat console
+gradlew.bat --no-daemon console
 ```
 
 ## Links
