@@ -22,18 +22,32 @@
 
 package org.age.services.lifecycle.internal;
 
+import static com.google.common.collect.Maps.newEnumMap;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
+import org.age.services.lifecycle.LifecycleMessage;
+import org.age.services.lifecycle.NodeDestroyedEvent;
 import org.age.services.lifecycle.NodeLifecycleService;
+import org.age.util.fsm.FSM;
 import org.age.util.fsm.StateMachineService;
 import org.age.util.fsm.StateMachineServiceBuilder;
 
 import com.google.common.eventbus.EventBus;
+import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.ITopic;
+import com.hazelcast.core.Message;
+import com.hazelcast.core.MessageListener;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
 
-import java.util.concurrent.TimeUnit;
+import java.io.Serializable;
+import java.util.EnumMap;
 import java.util.function.Consumer;
 
 import javax.annotation.PostConstruct;
@@ -56,7 +70,7 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 		/**
 		 * Node has been initialized.
 		 */
-		STARTED,
+		RUNNING,
 		/**
 		 * Node has failed.
 		 */
@@ -77,6 +91,7 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 		 * Sent by the bootstrapper.
 		 */
 		START,
+		DESTROY,
 		/**
 		 * Indicates that an error occurred.
 		 */
@@ -87,26 +102,40 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 		STOP
 	}
 
+	public static final String CHANNEL_NAME = "lifecycle/channel";
+
 	private static final Logger log = LoggerFactory.getLogger(DefaultNodeLifecycleService.class);
 
-	@Inject @MonotonicNonNull private EventBus eventBus;
+	@Inject private @MonotonicNonNull HazelcastInstance hazelcastInstance;
 
-	@MonotonicNonNull private StateMachineService<State, Event> service;
+	@Inject private @MonotonicNonNull EventBus eventBus;
 
-	@PostConstruct public final void construct() {
+	private @MonotonicNonNull ITopic<LifecycleMessage> topic;
+
+	private @MonotonicNonNull StateMachineService<State, Event> service;
+
+	private final EnumMap<LifecycleMessage.Type, Consumer<Serializable>> messageHandlers = newEnumMap(
+			LifecycleMessage.Type.class);
+
+	public DefaultNodeLifecycleService() {
+		messageHandlers.put(LifecycleMessage.Type.DESTROY, this::handleDestroy);
+	}
+
+	@PostConstruct private final void construct() {
 		//@formatter:off
 		service = StateMachineServiceBuilder
 			.withStatesAndEvents(State.class, Event.class)
 			.withName("lifecycle")
 			.startWith(State.OFFLINE)
-			.terminateIn(State.TERMINATED)
+			.terminateIn(State.TERMINATED, State.FAILED)
 
 			.in(State.OFFLINE)
-				.on(Event.START).execute(fsm -> log.debug("START")).goTo(State.STARTED)
+				.on(Event.START).execute(this::internalStart).goTo(State.RUNNING)
 				.commit()
 
 			.inAnyState()
-				.on(Event.STOP).execute(fsm -> log.debug("STOP")).goTo(State.TERMINATED)
+				.on(Event.DESTROY).execute(this::destroy).goTo(State.TERMINATED)
+				.on(Event.STOP).execute(this::internalStop).goTo(State.TERMINATED)
 				.on(Event.ERROR).execute(fsm -> log.debug("ERROR")).goTo(State.FAILED)
 				.commit()
 
@@ -114,30 +143,19 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 				.fireAndCall(Event.ERROR, new ExceptionHandler())
 
 			.withEventBus(eventBus)
-			//.notifyWithType(LifecycleStateChangedEvent.class)
 			.build();
 		//@formatter:on
+
+		topic = hazelcastInstance.getTopic(CHANNEL_NAME);
 	}
 
 	@Override public boolean isAutoStartup() {
 		return true;
 	}
 
-	@Override public void stop(final Runnable runnable) {
+	@Override public void stop(final Runnable callback) {
 		stop();
-		runnable.run();
-	}
-
-	public void awaitTermination() {
-		log.debug("Awaiting termination.");
-		// XXX: It should be nicer.
-		while (!service.isTerminated()) {
-			try {
-				TimeUnit.SECONDS.sleep(5);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+		callback.run();
 	}
 
 	@Override public void start() {
@@ -148,7 +166,12 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 	@Override public void stop() {
 		log.debug("Node lifecycle service stopping.");
 		service.fire(Event.STOP);
-		awaitTermination();
+		// The context must wait till the termination process will have finished
+		try {
+			awaitTermination();
+		} catch (final InterruptedException ignored) {
+			Thread.interrupted();
+		}
 		log.info("Node lifecycle service stopped.");
 	}
 
@@ -160,10 +183,60 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 		return Integer.MIN_VALUE;
 	}
 
+	@Override public void awaitTermination() throws InterruptedException {
+		log.debug("Awaiting termination.");
+		service.awaitTermination();
+	}
+
+	@Override public boolean isTerminated() {
+		return service.isTerminated();
+	}
+
+	// Transitions
+
+	private void internalStart(final @NonNull FSM<State, Event> fsm) {
+		log.debug("Node lifecycle service starting.");
+
+		topic.addMessageListener(new DistributedMessageListener());
+		eventBus.register(this);
+
+		log.info("Node lifecycle service started.");
+	}
+
+	private void internalStop(final @NonNull FSM<State, Event> fsm) {
+		log.debug("Node lifecycle service stopping.");
+
+		log.info("Node lifecycle service stopped.");
+	}
+
+	private void destroy(final @NonNull FSM<State, Event> fsm) {
+		log.info("Destroying the node.");
+		eventBus.post(new NodeDestroyedEvent());
+	}
+
+	// Message handling
+
+	private void handleDestroy(final @Nullable Serializable serializable) {
+		assert isNull(serializable);
+		log.debug("Destroy message received.");
+		service.fire(Event.DESTROY);
+	}
+
+	// Listeners
+
+	private class DistributedMessageListener implements MessageListener<LifecycleMessage> {
+		@Override public void onMessage(final Message<LifecycleMessage> message) {
+			log.debug("Distributed event: {}.", message);
+			final LifecycleMessage lifecycleMessage = message.getMessageObject();
+			log.debug("Lifecycle message: {}.", lifecycleMessage);
+			messageHandlers.get(lifecycleMessage.getType()).accept(lifecycleMessage.getPayload().orElse(null));
+		}
+	}
+
 	private class ExceptionHandler implements Consumer<Throwable> {
-
-		@Override public void accept(final Throwable throwable) {
-
+		@Override public void accept(final @NonNull Throwable throwable) {
+			assert nonNull(throwable);
+			log.error("Node lifecycle service error.", throwable);
 		}
 	}
 }

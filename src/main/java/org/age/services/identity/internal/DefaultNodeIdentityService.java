@@ -99,7 +99,7 @@ public class DefaultNodeIdentityService implements NodeIdentityService {
 				applicationContext.getBean(aClass);
 				return true;
 			} catch (final ClassNotFoundException | NoSuchBeanDefinitionException e) {
-				log.debug("No service {}.", service, e);
+				log.debug("No service {} - {}.", service, e.getMessage());
 				return false;
 			}
 		}).collect(toSet());
