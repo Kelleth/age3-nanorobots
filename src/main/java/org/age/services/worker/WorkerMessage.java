@@ -52,6 +52,10 @@ public class WorkerMessage<T extends Serializable> implements Serializable {
 		LOAD_CLASS,
 		LOAD_CONFIGURATION,
 		START_COMPUTATION(false),
+		STOP_COMPUTATION(false),
+		CLEAN_CONFIGURATION(false),
+
+		// Internal
 		BROADCAST_MESSAGE(true, false),
 		UNICAST_CONTROL(true, false),
 		UNICAST_MESSAGE(true, false);

@@ -23,6 +23,7 @@
 
 package org.age.services.worker.internal;
 
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Maps.newEnumMap;
 import static com.google.common.collect.Sets.newHashSet;
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
@@ -33,12 +34,16 @@ import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 
 import org.age.services.identity.NodeIdentityService;
+import org.age.services.lifecycle.NodeDestroyedEvent;
+import org.age.services.lifecycle.NodeLifecycleService;
+import org.age.services.topology.TopologyService;
+import org.age.services.worker.TaskStartedEvent;
 import org.age.services.worker.WorkerMessage;
 import org.age.services.worker.WorkerService;
 
 import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableScheduledFuture;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.hazelcast.core.HazelcastInstance;
@@ -46,20 +51,13 @@ import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
 
-import org.checkerframework.checker.lock.qual.GuardedBy;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.BeanCreationException;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.support.AbstractApplicationContext;
-import org.springframework.context.support.FileSystemXmlApplicationContext;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -68,18 +66,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
+import javax.inject.Named;
 
 public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication, WorkerService {
 
 	public static final String CHANNEL_NAME = "worker/channel";
 
-	private static final Logger log = LoggerFactory.getLogger(WorkerService.class);
+	private static final Logger log = LoggerFactory.getLogger(DefaultWorkerService.class);
 
 	private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -90,8 +87,6 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 
 	private final Set<CommunicationFacility> communicationFacilities = newHashSet();
 
-	private final ReadWriteLock taskLock = new ReentrantReadWriteLock();
-
 	private final EnumMap<WorkerMessage.Type, Consumer<Serializable>> messageHandlers = newEnumMap(
 			WorkerMessage.Type.class);
 
@@ -99,19 +94,19 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 
 	@Inject private @MonotonicNonNull NodeIdentityService identityService;
 
+	@Inject private @MonotonicNonNull NodeLifecycleService lifecycleService;
+
+	@Inject @Named("default") private @MonotonicNonNull TopologyService topologyService;
+
 	@Inject private @MonotonicNonNull EventBus eventBus;
 
 	@Inject private @MonotonicNonNull ApplicationContext applicationContext;
 
 	private @MonotonicNonNull ITopic<WorkerMessage<Serializable>> topic;
 
-	@GuardedBy("taskLock") private @Nullable String currentClassName;
+	private @Nullable TaskBuilder taskBuilder;
 
-	@GuardedBy("taskLock") private @Nullable Runnable currentTask;
-
-	@GuardedBy("taskLock") private @Nullable AbstractApplicationContext currentContext;
-
-	@GuardedBy("taskLock") private @Nullable ListenableScheduledFuture<?> currentTaskFuture;
+	private @Nullable StartedTask currentTask;
 
 	protected DefaultWorkerService() {
 		Arrays.stream(WorkerMessage.Type.values()).forEach(type -> workerMessageListeners.put(type, newHashSet()));
@@ -119,6 +114,8 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 		messageHandlers.put(WorkerMessage.Type.LOAD_CLASS, this::handleLoadClass);
 		messageHandlers.put(WorkerMessage.Type.LOAD_CONFIGURATION, this::handleLoadConfig);
 		messageHandlers.put(WorkerMessage.Type.START_COMPUTATION, this::handleStartComputation);
+		messageHandlers.put(WorkerMessage.Type.STOP_COMPUTATION, this::handleStopComputation);
+		messageHandlers.put(WorkerMessage.Type.CLEAN_CONFIGURATION, this::handleCleanConfiguration);
 	}
 
 	@PostConstruct private void construct() {
@@ -171,14 +168,6 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 		return executorService.scheduleAtFixedRate(command, initialDelay, period, unit);
 	}
 
-	public boolean isSetUp() {
-		return currentClassName != null;
-	}
-
-	public boolean isTaskRunning() {
-		return (currentTaskFuture != null) && !currentTaskFuture.isDone();
-	}
-
 	private void handleLoadClass(final @NonNull Serializable payload) {
 		assert nonNull(payload) && (payload instanceof String);
 		setupTaskFromClass((String)payload);
@@ -194,117 +183,109 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 		startTask();
 	}
 
+	private void handleStopComputation(final @Nullable Serializable payload) {
+		assert isNull(payload);
+		stopTask();
+	}
+
+	private void handleCleanConfiguration(final @Nullable Serializable payload) {
+		assert isNull(payload);
+		cleanUpAfterTask();
+	}
+
+
+	private boolean isTaskPresent() {
+		return nonNull(taskBuilder) && nonNull(currentTask);
+	}
+
+	private boolean isEnvironmentReady() {
+		return lifecycleService.isRunning() && topologyService.hasTopology();
+	}
+
 	private void setupTaskFromClass(final @NonNull String className) {
 		assert nonNull(className);
-		assert !isTaskRunning() : "Task is already running.";
+		checkState(!isTaskPresent(), "Task is already configured.");
 
-		taskLock.writeLock().lock();
-		try {
-			log.debug("Setting up task from class {}.", className);
-
-			log.debug("Creating internal Spring context.");
-			final AnnotationConfigApplicationContext taskContext = new AnnotationConfigApplicationContext();
-
-			// Configure task
-			final BeanDefinitionBuilder builder = BeanDefinitionBuilder.rootBeanDefinition(className);
-			taskContext.registerBeanDefinition("runnable", builder.getBeanDefinition());
-
-			prepareContext(taskContext);
-			currentClassName = className;
-
-			log.debug("Task setup finished.");
-		} catch (final BeanCreationException e) {
-			log.error("Cannot create the task.", e);
-			cleanUpAfterTask();
-		} finally {
-			taskLock.writeLock().unlock();
-		}
+		final TaskBuilder classTaskBuilder = TaskBuilder.fromClass(className);
+		prepareContext(classTaskBuilder);
+		taskBuilder = classTaskBuilder;
 	}
 
 	private void setupTaskFromConfig(final @NonNull String configPath) {
 		assert nonNull(configPath);
-		assert !isTaskRunning() : "Task is already running.";
+		checkState(!isTaskPresent(), "Task is already configured.");
 
-		taskLock.writeLock().lock();
-		try {
-			log.debug("Setting up task from config {}.", configPath);
-
-			log.debug("Creating internal Spring context.");
-			final FileSystemXmlApplicationContext taskContext = new FileSystemXmlApplicationContext(configPath);
-			prepareContext(taskContext);
-
-			currentClassName = taskContext.getType("runnable").getCanonicalName();
-
-			log.debug("Task setup finished.");
-		} catch (final BeanCreationException e) {
-			log.error("Cannot create the task.", e);
-			cleanUpAfterTask();
-		} finally {
-			taskLock.writeLock().unlock();
-		}
+		final TaskBuilder configTaskBuilder = TaskBuilder.fromConfig(configPath);
+		prepareContext(configTaskBuilder);
+		taskBuilder = configTaskBuilder;
 	}
 
-	private void prepareContext(final @NonNull AbstractApplicationContext taskContext) {
-		assert nonNull(taskContext);
+	private void prepareContext(final @NonNull TaskBuilder taskBuilder) {
+		assert nonNull(taskBuilder);
 
 		// Configure communication facilities (as singletons)
-		final ConfigurableListableBeanFactory beanFactory = taskContext.getBeanFactory();
 		final Map<String, CommunicationFacility> facilitiesMap = applicationContext.getBeansOfType(
 				CommunicationFacility.class);
 		communicationFacilities.addAll(facilitiesMap.values());
-		// Add services
+		// Add services injected by the container
 		log.debug("Registering facilities and adding them as listeners for messages.");
 		communicationFacilities.forEach(service -> {
 			service.subscribedTypes().forEach(key -> workerMessageListeners.get(key).add(service));
 			log.debug("Registering {} as {} in application context.", service.getClass().getSimpleName(), service);
-			beanFactory.registerSingleton(service.getClass().getSimpleName(), service);
+			taskBuilder.registerSingleton(service);
 		});
 
-		// Refreshing the context
-		taskContext.refresh();
-		currentContext = taskContext;
+		// Refreshing the Spring context
+		taskBuilder.finishConfiguration();
 	}
 
 	private void startTask() {
-		assert (currentClassName != null) && (currentContext != null);
+		assert nonNull(taskBuilder);
 
-		log.debug("Starting task from class {}.", currentClassName);
+		if (!isEnvironmentReady()) {
+			log.warn("Trying to start computation when node is not ready.");
+			// XXX: Maybe enqueue for future start?
+			return;
+		}
+
+		log.debug("Starting task {}.", taskBuilder);
 
 		communicationFacilities.forEach(CommunicationFacility::start);
+		currentTask = taskBuilder.buildAndSchedule(executorService, new ExecutionListener());
+		eventBus.post(new TaskStartedEvent());
+	}
 
-		taskLock.writeLock().lock();
-		try {
-			currentContext.start();
-			currentTask = (Runnable)currentContext.getBean("runnable");
+	private void stopTask() {
+		log.debug("Stopping current task {}.", currentTask);
 
-			log.info("Starting execution of {}.", currentTask);
-
-			currentTaskFuture = executorService.schedule(currentTask, 0L, TimeUnit.SECONDS);
-			Futures.addCallback(currentTaskFuture, new ExecutionListener());
-		} finally {
-			taskLock.writeLock().unlock();
+		if (!isTaskPresent()) {
+			log.info("No task to stop.");
+			return;
 		}
+		if (!currentTask.isRunning()) {
+			log.warn("Task is already stopped.");
+			return;
+		}
+
+		currentTask.stop();
 	}
 
 	private void cleanUpAfterTask() {
 		log.debug("Cleaning up after task {}.", currentTask);
-		taskLock.writeLock().lock();
-		try {
-			currentClassName = null;
-			currentTaskFuture = null;
-			currentTask = null;
 
-			if (currentContext != null) {
-				currentContext.stop();
-				currentContext.close();
-				currentContext = null;
-			}
-		} finally {
-			taskLock.writeLock().unlock();
+		if (!isTaskPresent()) {
+			log.warn("No task to clean up after.");
 		}
+
+		currentTask.cleanUp();
+		currentTask = null;
 		log.debug("Clean up finished.");
 	}
 
+	@Subscribe public void handleNodeDestroyedEvent(final @NonNull NodeDestroyedEvent event) {
+		log.debug("Got event: {}.", event);
+		stopTask();
+	}
 
 	private final class DistributedMessageListener implements MessageListener<WorkerMessage<Serializable>> {
 
