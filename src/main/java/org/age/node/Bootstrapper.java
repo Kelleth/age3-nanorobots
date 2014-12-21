@@ -22,7 +22,9 @@
 
 package org.age.node;
 
-import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
+import static java.util.Objects.isNull;
+
+import org.age.services.lifecycle.NodeLifecycleService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,16 +38,17 @@ public final class Bootstrapper {
 	private Bootstrapper() {
 	}
 
-	public static void main(final String... args) {
-
-		DefaultNodeLifecycleService lifecycleService = null;
+	public static void main(final String... args) throws InterruptedException {
 		try (final ConfigurableApplicationContext context = new ClassPathXmlApplicationContext("spring-node.xml")) {
 			context.registerShutdownHook();
-			lifecycleService = context.getBean(DefaultNodeLifecycleService.class);
+			final NodeLifecycleService lifecycleService = context.getBean(NodeLifecycleService.class);
+			if (isNull(lifecycleService)) {
+				log.error("No node lifecycle service is defined.");
+				return;
+			}
 			lifecycleService.awaitTermination();
 		} finally {
 			log.info("Finishing.");
-			lifecycleService.awaitTermination();
 		}
 		log.info("Exiting.");
 		System.exit(0);

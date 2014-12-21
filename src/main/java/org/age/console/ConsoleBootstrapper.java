@@ -22,9 +22,10 @@
 
 package org.age.console;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
-import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
+import org.age.services.lifecycle.NodeLifecycleService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,19 +43,26 @@ public final class ConsoleBootstrapper {
 
 	private ConsoleBootstrapper() {}
 
-	public static void main(final String... args) {
-		DefaultNodeLifecycleService lifecycleService = null;
+	public static void main(final String... args) throws InterruptedException {
+		NodeLifecycleService lifecycleService = null;
 
 		try (final ConfigurableApplicationContext context = new ClassPathXmlApplicationContext("spring-console.xml")) {
-			lifecycleService = context.getBean(DefaultNodeLifecycleService.class);
 			context.registerShutdownHook();
+			lifecycleService = context.getBean(NodeLifecycleService.class);
+			if (isNull(lifecycleService)) {
+				log.error("No node lifecycle service is defined.");
+				return;
+			}
 
 			log.info("Starting console.");
-			context.getBean(Console.class).mainLoop();
-
+			final Console console = context.getBean(Console.class);
+			if (isNull(console)) {
+				log.error("No console is defined.");
+				return;
+			}
+			console.mainLoop();
 		} catch (final IOException e) {
 			log.error("Console exception.", e);
-
 		} finally {
 			log.info("Finishing.");
 
