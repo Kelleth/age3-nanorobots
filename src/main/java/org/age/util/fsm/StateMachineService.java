@@ -69,8 +69,10 @@ public interface StateMachineService<S extends Enum<S>, E extends Enum<E>> exten
 
 	/**
 	 * Tells whether the machine is already terminated.
-	 **/
+	 */
 	boolean isTerminated();
+
+	void awaitTermination() throws InterruptedException;
 
 	/**
 	 * Shutdowns and cleans up the service.

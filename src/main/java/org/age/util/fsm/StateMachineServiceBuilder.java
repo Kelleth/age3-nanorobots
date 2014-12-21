@@ -486,7 +486,7 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 		 *
 		 * @return this action builder.
 		 */
-		@NonNull public AnyStateActionBuilder execute(final Consumer<FSM<S, E>> actionToExecute) {
+		@NonNull public AnyStateActionBuilder execute(final Consumer<@NonNull FSM<S, E>> actionToExecute) {
 			action = requireNonNull(actionToExecute);
 			return this;
 		}

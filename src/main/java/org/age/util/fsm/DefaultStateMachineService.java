@@ -200,6 +200,25 @@ public final class DefaultStateMachineService<S extends Enum<S>, E extends Enum<
 		}
 	}
 
+	@Override public void awaitTermination() throws InterruptedException {
+		while (true) {
+			long stamp = stateLock.tryOptimisticRead();
+			boolean terminated = terminalStates.contains(currentState);
+			if (!stateLock.validate(stamp)) {
+				stamp = stateLock.readLock();
+				try {
+					terminated = terminalStates.contains(currentState);
+				} finally {
+					stateLock.unlock(stamp);
+				}
+			}
+			if (terminated) {
+				return;
+			}
+			TimeUnit.SECONDS.sleep(1L);
+		}
+	}
+
 	@Override public void shutdown() {
 		checkState(isTerminated(), "Service has not terminated yet. Current state: %s.", currentState());
 		log.debug("{}: Service is in terminal state - performing shutdown.", serviceName);
