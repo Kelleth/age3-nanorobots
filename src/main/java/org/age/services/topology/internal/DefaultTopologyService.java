@@ -33,6 +33,7 @@ import org.age.services.discovery.DiscoveryEvent;
 import org.age.services.discovery.DiscoveryService;
 import org.age.services.identity.NodeDescriptor;
 import org.age.services.identity.NodeIdentityService;
+import org.age.services.lifecycle.NodeDestroyedEvent;
 import org.age.services.topology.TopologyMessage;
 import org.age.services.topology.TopologyService;
 import org.age.services.topology.processors.TopologyProcessor;
@@ -383,6 +384,11 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 		public static final String TOPOLOGY_GRAPH = "topologyGraph";
 
 		public static final String TOPOLOGY_TYPE = "topologyType";
+	}
+
+	@Subscribe public void handleNodeDestroyedEvent(final @NonNull NodeDestroyedEvent event) {
+		log.debug("Got event: {}.", event);
+		service.fire(Event.STOP);
 	}
 
 	private class TopologyTypeChangeListener extends EntryAdapter<String, Object> {
