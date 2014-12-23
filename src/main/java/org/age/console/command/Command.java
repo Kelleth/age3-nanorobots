@@ -22,6 +22,8 @@
 
 package org.age.console.command;
 
+import static java.util.Collections.emptySet;
+
 import com.beust.jcommander.JCommander;
 
 import jline.console.ConsoleReader;
@@ -30,6 +32,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Set;
 
 /**
  * Interface for commands used by the console.
@@ -54,4 +57,14 @@ public interface Command {
 	 */
 	boolean execute(@NonNull JCommander commander, @NonNull ConsoleReader reader, @NonNull PrintWriter printWriter)
 			throws IOException;
+
+	/**
+	 * Returns set of suboperations (subcommands) of the command in the from of strings. By default returns an empty
+	 * set.
+	 *
+	 * @return suboperations of the command.
+	 */
+	default Set<String> operations() {
+		return emptySet();
+	}
 }

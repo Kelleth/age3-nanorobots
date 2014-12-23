@@ -21,6 +21,7 @@ package org.age.console;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toSet;
 
@@ -29,6 +30,7 @@ import org.age.console.command.MainCommand;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterDescription;
+import com.google.common.collect.Sets;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -76,11 +78,14 @@ public class CommandIntrospector {
 		requireNonNull(command);
 		checkArgument(!command.isEmpty());
 
-		return commandsMap.get(command)
-		                  .getParameters()
-		                  .stream()
-		                  .map(ParameterDescription::getLongestName)
-		                  .collect(toSet());
+		final Set<String> parameters = commandsMap.get(command)
+		                                          .getParameters()
+		                                          .stream()
+		                                          .map(ParameterDescription::getLongestName)
+		                                          .collect(toSet());
+		final Command commandObject = (Command)getOnlyElement(commandsMap.get(command).getObjects());
+		final Set<String> operations = commandObject.operations();
+		return Sets.union(parameters, operations);
 	}
 
 	public @NonNull Set<String> parametersOfCommandStartingWith(final @NonNull String command,
@@ -89,12 +94,18 @@ public class CommandIntrospector {
 		requireNonNull(prefix);
 		checkArgument(!command.isEmpty());
 
-		return commandsMap.get(command)
-		                  .getParameters()
-		                  .stream()
-		                  .map(ParameterDescription::getLongestName)
-		                  .filter(s -> s.startsWith(prefix))
-		                  .collect(toSet());
+		final Set<String> parameters = commandsMap.get(command)
+		                                          .getParameters()
+		                                          .stream()
+		                                          .map(ParameterDescription::getLongestName)
+		                                          .filter(s -> s.startsWith(prefix))
+		                                          .collect(toSet());
+		final Command commandObject = (Command)getOnlyElement(commandsMap.get(command).getObjects());
+		final Set<String> operations = commandObject.operations()
+		                                            .stream()
+		                                            .filter(s -> s.startsWith(prefix))
+		                                            .collect(toSet());
+		return Sets.union(parameters, operations);
 	}
 
 	public @NonNull Set<String> parametersOfMainCommand() {
