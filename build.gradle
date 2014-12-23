@@ -19,6 +19,36 @@ configurations {
     markdownDoclet
 }
 
+dependencies {
+    testCompile 'org.testng:testng:+'
+    testCompile 'org.mockito:mockito-all:+'
+    testCompile 'org.uncommons:reportng:+'
+    testCompile 'com.google.inject:guice:+'
+    testCompile 'org.assertj:assertj-core:+'
+    testCompile 'org.assertj:assertj-guava:+'
+
+    compile 'javax.inject:javax.inject:1'
+    compile 'org.springframework:spring-context:+'
+    compile('com.hazelcast:hazelcast:+') {
+        // Not needed and would introduce a lot of duplicated annotations
+        exclude group: 'net.sourceforge.findbugs'
+    }
+    compile 'com.hazelcast:hazelcast-spring:+'
+    compile 'org.checkerframework:checker:+'
+    compile 'com.google.code.findbugs:jsr305:+'
+    compile 'com.google.guava:guava:+'
+    compile 'org.slf4j:slf4j-api:+'
+    compile 'org.slf4j:jcl-over-slf4j:+'
+    compile 'ch.qos.logback:logback-classic:+'
+    compile 'jline:jline:+'
+    compile 'org.jgrapht:jgrapht-core:+'
+    compile 'com.beust:jcommander:+'
+
+    runtime 'org.codehaus.groovy:groovy-all:+'
+
+    markdownDoclet 'ch.raffael.pegdown-doclet:pegdown-doclet:+'
+}
+
 test {
     useTestNG()
     options {
@@ -39,41 +69,26 @@ tasks.withType(Test) {
 //    }
 //}
 
-dependencies {
-    testCompile 'org.testng:testng:+'
-    testCompile 'org.mockito:mockito-all:+'
-    testCompile 'org.uncommons:reportng:+'
-    testCompile 'com.google.inject:guice:+'
-    testCompile 'org.assertj:assertj-core:+'
-    testCompile 'org.assertj:assertj-guava:+'
-
-    compile 'javax.inject:javax.inject:1'
-    compile 'org.springframework:spring-context:+'
-    compile('com.hazelcast:hazelcast:+') {
-        // Not needed and would introduce a lot of duplicated annotations
-        exclude group: 'net.sourceforge.findbugs'
+allprojects {
+    tasks.withType(JavaCompile).all { JavaCompile compile ->
+        if (System.getenv('CHECKER_FRAMEWORK')) {
+            compile.options.debug = true
+            compile.options.compilerArgs = [
+                    '-version',
+                    '-implicit:class',
+                    '-processor', 'org.checkerframework.checker.nullness.NullnessChecker'
+            ]
+            options.fork = true
+            options.forkOptions.executable = System.getenv('CHECKER_FRAMEWORK') + "/checker/bin/javac"
+        }
     }
-    compile 'com.hazelcast:hazelcast-spring:+'
-    compile 'org.checkerframework:checker-qual:+'
-    compile 'com.google.code.findbugs:jsr305:+'
-    compile 'com.google.guava:guava:+'
-    compile 'org.slf4j:slf4j-api:+'
-    compile 'org.slf4j:jcl-over-slf4j:+'
-    compile 'ch.qos.logback:logback-classic:+'
-    compile 'jline:jline:+'
-    compile 'org.jgrapht:jgrapht-core:+'
-    compile 'com.beust:jcommander:+'
-
-    runtime 'org.codehaus.groovy:groovy-all:+'
-
-    markdownDoclet 'ch.raffael.pegdown-doclet:pegdown-doclet:+'
 }
 
 task wrapper(type: Wrapper) {
     gradleVersion = "2.2.1"
 }
 
-task(console, dependsOn: 'classes') << {
+task console(dependsOn: 'classes') << {
     def classpath = sourceSets.main.runtimeClasspath + configurations.runtime
 
     def command = [
@@ -131,19 +146,19 @@ publishing {
         mavenJava(MavenPublication) {
             from components.java
 
-            artifact (javadocJar)
-            artifact (sourcesJar)
+            artifact(javadocJar)
+            artifact(sourcesJar)
         }
     }
     repositories {
         maven {
-            if(project.hasProperty( "mavenUser")) {
+            if (project.hasProperty("mavenUser")) {
                 credentials {
                     username mavenUser
                     password mavenPassword
                 }
             }
-            if(project.version.endsWith('-SNAPSHOT')) {
+            if (project.version.endsWith('-SNAPSHOT')) {
                 url "https://repository.age.agh.edu.pl/content/repositories/snapshots"
             } else {
                 url "https://repository.age.agh.edu.pl/content/repositories/releases"
