@@ -121,7 +121,7 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 		messageHandlers.put(LifecycleMessage.Type.DESTROY, this::handleDestroy);
 	}
 
-	@PostConstruct private final void construct() {
+	@PostConstruct private void construct() {
 		//@formatter:off
 		service = StateMachineServiceBuilder
 			.withStatesAndEvents(State.class, Event.class)

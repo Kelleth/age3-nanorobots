@@ -193,7 +193,6 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 		cleanUpAfterTask();
 	}
 
-
 	private boolean isTaskPresent() {
 		return nonNull(taskBuilder) && nonNull(currentTask);
 	}
