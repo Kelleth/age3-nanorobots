@@ -38,6 +38,7 @@ import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Table;
 import com.google.common.eventbus.EventBus;
 
+import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -94,13 +95,13 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 
 	private final Class<E> eventClass;
 
-	private S initialState;
+	private @MonotonicNonNull S initialState;
 
-	private EnumSet<S> terminalStates;
+	private @MonotonicNonNull EnumSet<S> terminalStates;
 
-	private EventBus eventBus;
+	private @MonotonicNonNull EventBus eventBus;
 
-	private String name;
+	private @MonotonicNonNull String name;
 
 	private boolean shutdownWhenTerminated;
 
@@ -108,7 +109,7 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 
 	private boolean synchronous = false;
 
-	StateMachineServiceBuilder(@NonNull final Class<S> states, @NonNull final Class<E> events) {
+	StateMachineServiceBuilder(final @NonNull Class<S> states, final @NonNull Class<E> events) {
 		stateClass = requireNonNull(states);
 		eventClass = requireNonNull(events);
 
@@ -120,7 +121,7 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 	}
 
 	public static <S extends Enum<S>, E extends Enum<E>> StateMachineServiceBuilder<S, E> withStatesAndEvents(
-			@NonNull final Class<S> states, @NonNull final Class<E> events) {
+			final @NonNull Class<S> states, final @NonNull Class<E> events) {
 		return new StateMachineServiceBuilder<>(states, events);
 	}
 
@@ -130,12 +131,13 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 	 * @return this builder instance.
 	 */
 	public StateMachineServiceBuilder<S, E> notifyWithType(
-			@NonNull final Class<? extends StateChangedEvent<S, E>> klass) {
+			final @NonNull Class<? extends StateChangedEvent<S, E>> klass) {
 		stateChangedEventClass = requireNonNull(klass);
 		return this;
 	}
 
-	public StateMachineServiceBuilder<S, E> withName(@NonNull final String name) {
+	@EnsuresNonNull("name")
+	public StateMachineServiceBuilder<S, E> withName(final @NonNull String name) {
 		this.name = requireNonNull(name);
 		return this;
 	}
@@ -169,6 +171,7 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 	 *
 	 * @return this builder instance.
 	 */
+	@EnsuresNonNull("initialState")
 	public StateMachineServiceBuilder<S, E> startWith(final S state) {
 		initialState = requireNonNull(state);
 		log.debug("Starting state: {}.", initialState);
@@ -183,6 +186,7 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 	 *
 	 * @return this builder instance.
 	 */
+	@EnsuresNonNull("terminalStates")
 	public StateMachineServiceBuilder<S, E> terminateIn(final S... states) {
 		checkArgument(states.length > 0, "Must provide at least one terminating state.");
 
@@ -200,8 +204,9 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 		return failureBehaviorBuilder;
 	}
 
-	public StateMachineServiceBuilder<S, E> withEventBus(final EventBus eventBus) {
-		this.eventBus = eventBus;
+	@EnsuresNonNull("eventBus")
+	public StateMachineServiceBuilder<S, E> withEventBus(final @NonNull EventBus eventBus) {
+		this.eventBus = requireNonNull(eventBus);
 		return this;
 	}
 
@@ -210,6 +215,7 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 	 *
 	 * @return a new {@code StateMachineService}.
 	 */
+	@EnsuresNonNull({"name", "initialState", "terminalStates"})
 	public StateMachineService<S, E> build() {
 		log.debug("Building a state machine: N={}, S={}, E={}.", name, stateClass, eventClass);
 		checkState(nonNull(name));
@@ -259,15 +265,16 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 		return terminalStates;
 	}
 
-	@Nullable EventBus eventBus() {
+	@NonNull EventBus eventBus() {
+		assert nonNull(eventBus);
 		return eventBus;
 	}
 
-	@Nullable Map<E, Set<S>> getAnyTransitions() {
+	@NonNull Map<E, Set<S>> getAnyTransitions() {
 		return noStateTransitions;
 	}
 
-	@Nullable Map<E, Consumer<FSM<S, E>>> getAnyActions() {
+	@NonNull Map<E, Consumer<FSM<S, E>>> getAnyActions() {
 		return noStateActions;
 	}
 

@@ -24,6 +24,7 @@ import static java.util.Objects.requireNonNull;
 
 import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -118,7 +119,7 @@ public class StateChangedEvent<S extends Enum<S>, E extends Enum<E>> {
 		return toStringHelper(this).add("previous", previousState).add("event", event).add("new", newState).toString();
 	}
 
-	@Override public boolean equals(final Object obj) {
+	@Override public boolean equals(final @Nullable Object obj) {
 		if (!(obj instanceof StateChangedEvent)) {
 			return false;
 		}

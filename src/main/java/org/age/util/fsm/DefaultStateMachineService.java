@@ -26,6 +26,7 @@ import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.collect.Queues.newConcurrentLinkedQueue;
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 import static org.age.util.Runnables.swallowingRunnable;
@@ -340,6 +341,10 @@ public final class DefaultStateMachineService<S extends Enum<S>, E extends Enum<
 				transitionDescriptor = transitionsTable.get(currentState, currentEvent);
 			} finally {
 				stateLock.unlock(stamp);
+			}
+
+			if (isNull(transitionDescriptor)) {
+				return; // FIXME
 			}
 
 			log.debug("{}: Planned transition: {}.", serviceName, transitionDescriptor);

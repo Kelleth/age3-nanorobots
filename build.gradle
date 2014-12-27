@@ -76,7 +76,8 @@ allprojects {
             compile.options.compilerArgs = [
                     '-version',
                     '-implicit:class',
-                    '-processor', 'org.checkerframework.checker.nullness.NullnessChecker'
+                    '-processor', 'org.checkerframework.checker.nullness.NullnessChecker',
+                    '-AassumeAssertionsAreEnabled'
             ]
             options.fork = true
             options.forkOptions.executable = System.getenv('CHECKER_FRAMEWORK') + "/checker/bin/javac"

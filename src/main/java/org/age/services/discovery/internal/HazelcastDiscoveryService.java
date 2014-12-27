@@ -49,6 +49,7 @@ import com.hazelcast.core.MapEvent;
 import com.hazelcast.query.SqlPredicate;
 
 import org.checkerframework.checker.igj.qual.Immutable;
+import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -75,11 +76,11 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 
 	private final AtomicBoolean running = new AtomicBoolean(false);
 
-	@Inject private @MonotonicNonNull HazelcastInstance hazelcastInstance;
+	@Inject private @NonNull HazelcastInstance hazelcastInstance;
 
-	@Inject private @MonotonicNonNull NodeIdentityService identityService;
+	@Inject private @NonNull NodeIdentityService identityService;
 
-	@Inject private @MonotonicNonNull EventBus eventBus;
+	@Inject private @NonNull EventBus eventBus;
 
 	private @MonotonicNonNull IMap<@NonNull String, @NonNull NodeDescriptor> members;
 
@@ -87,6 +88,7 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 
 	private @MonotonicNonNull String entryListenerId;
 
+	@EnsuresNonNull({"nodeId", "members", "entryListenerId"})
 	@PostConstruct private void construct() {
 		nodeId = identityService.nodeId();
 		members = hazelcastInstance.getMap(MEMBERS_MAP);

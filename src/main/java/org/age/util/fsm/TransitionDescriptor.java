@@ -50,21 +50,25 @@ final class TransitionDescriptor<S extends Enum<S>, E extends Enum<E>> {
 		throw new IllegalTransitionException("Transition is illegal.");
 	};
 
-	public static final TransitionDescriptor<?, ?> NULL = new TransitionDescriptor(null, null, Collections.emptySet(),
+	private enum Dummy {
+		ENUM
+	};
+
+	public static final TransitionDescriptor<?, ?> NULL = new TransitionDescriptor(Dummy.ENUM, Dummy.ENUM, Collections.emptySet(),
 	                                                                               ILLEGAL_ACTION);
 
-	public static final Consumer<?> EMPTY_ACTION = fsm -> {};
+	private static final Consumer<?> EMPTY_ACTION = fsm -> {};
 
-	@Nullable private final S initial;
+	private final S initial;
 
-	@Nullable private final E event;
+	private final E event;
 
-	@NonNull private final Consumer<FSM<S, E>> action;
+	private final Consumer<FSM<S, E>> action;
 
-	@NonNull private final Set<S> target;
+	private final Set<S> target;
 
-	TransitionDescriptor(@Nullable final S initial, @Nullable final E event, @NonNull final Collection<S> target,
-	                     @Nullable final Consumer<FSM<S, E>> action) {
+	TransitionDescriptor(final @NonNull S initial, final @NonNull E event, final @NonNull Collection<S> target,
+	                     final @Nullable Consumer<FSM<S, E>> action) {
 		this.initial = initial;
 		this.event = event;
 		this.action = isNull(action) ? (Consumer<FSM<S, E>>)EMPTY_ACTION : action;
@@ -83,11 +87,11 @@ final class TransitionDescriptor<S extends Enum<S>, E extends Enum<E>> {
 		return target;
 	}
 
-	@Nullable S initial() {
+	@NonNull S initial() {
 		return initial;
 	}
 
-	@Nullable E event() {
+	@NonNull E event() {
 		return event;
 	}
 
