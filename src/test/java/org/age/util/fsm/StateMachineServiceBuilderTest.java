@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 
 import com.google.common.collect.Table;
+import com.google.common.eventbus.EventBus;
 
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -254,6 +255,7 @@ public final class StateMachineServiceBuilderTest {
 		builder.withName(SERVICE_NAME)
 		       .startWith(State.STATE1)
 		       .terminateIn(State.STATE3)
+				.withEventBus(new EventBus())
 		       .ifFailed()
 		       .fireAndCall(Event.EVENT2, throwables -> {})
 		       .in(State.STATE1)
