@@ -37,6 +37,8 @@ import org.age.services.identity.NodeIdentityService;
 import org.age.services.lifecycle.NodeDestroyedEvent;
 import org.age.services.lifecycle.NodeLifecycleService;
 import org.age.services.topology.TopologyService;
+import org.age.services.worker.TaskFailedEvent;
+import org.age.services.worker.TaskFinishedEvent;
 import org.age.services.worker.TaskStartedEvent;
 import org.age.services.worker.WorkerMessage;
 import org.age.services.worker.WorkerService;
@@ -51,6 +53,7 @@ import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
 
+import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -64,6 +67,7 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -90,17 +94,17 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 	private final EnumMap<WorkerMessage.Type, Consumer<Serializable>> messageHandlers = newEnumMap(
 			WorkerMessage.Type.class);
 
-	@Inject private @MonotonicNonNull HazelcastInstance hazelcastInstance;
+	@Inject private @NonNull HazelcastInstance hazelcastInstance;
 
-	@Inject private @MonotonicNonNull NodeIdentityService identityService;
+	@Inject private @NonNull NodeIdentityService identityService;
 
-	@Inject private @MonotonicNonNull NodeLifecycleService lifecycleService;
+	@Inject private @NonNull NodeLifecycleService lifecycleService;
 
-	@Inject @Named("default") private @MonotonicNonNull TopologyService topologyService;
+	@Inject @Named("default") private @NonNull TopologyService topologyService;
 
-	@Inject private @MonotonicNonNull EventBus eventBus;
+	@Inject private @NonNull EventBus eventBus;
 
-	@Inject private @MonotonicNonNull ApplicationContext applicationContext;
+	@Inject private @NonNull ApplicationContext applicationContext;
 
 	private @MonotonicNonNull ITopic<WorkerMessage<Serializable>> topic;
 
@@ -118,6 +122,7 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 		messageHandlers.put(WorkerMessage.Type.CLEAN_CONFIGURATION, this::handleCleanConfiguration);
 	}
 
+	@EnsuresNonNull("topic")
 	@PostConstruct private void construct() {
 		topic = hazelcastInstance.getTopic(CHANNEL_NAME);
 		topic.addMessageListener(new DistributedMessageListener());
@@ -324,11 +329,17 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 
 		@Override public void onSuccess(final Object result) {
 			log.info("Task {} finished.", currentTask);
+			eventBus.post(new TaskFinishedEvent());
 			cleanUpAfterTask();
 		}
 
 		@Override public void onFailure(final @NonNull Throwable t) {
-			log.error("Task {} failed with error.", currentTask, t);
+			if (t instanceof CancellationException) {
+				log.debug("Task {} was cancelled. Ignoring exception.", currentTask);
+			} else {
+				log.error("Task {} failed with error.", currentTask, t);
+				eventBus.post(new TaskFailedEvent(t));
+			}
 			cleanUpAfterTask();
 		}
 	}

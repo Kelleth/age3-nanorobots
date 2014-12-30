@@ -25,10 +25,12 @@ package org.age.services.discovery.internal;
 
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
+import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
 import org.age.services.discovery.DiscoveryService;
+import org.age.services.discovery.DiscoveryServiceStoppingEvent;
 import org.age.services.discovery.MemberAddedEvent;
 import org.age.services.discovery.MemberRemovedEvent;
 import org.age.services.identity.NodeDescriptor;
@@ -52,6 +54,7 @@ import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.units.qual.s;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -68,6 +71,8 @@ import javax.inject.Named;
 public final class HazelcastDiscoveryService implements SmartLifecycle, DiscoveryService {
 
 	private static final String MEMBERS_MAP = "discovery/members";
+
+	private static final @s long UPDATE_PERIOD_IN_S = 10L;
 
 	private static final Logger log = LoggerFactory.getLogger(HazelcastDiscoveryService.class);
 
@@ -88,8 +93,7 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 
 	private @MonotonicNonNull String entryListenerId;
 
-	@EnsuresNonNull({"nodeId", "members", "entryListenerId"})
-	@PostConstruct private void construct() {
+	@EnsuresNonNull({"nodeId", "members", "entryListenerId"}) @PostConstruct private void construct() {
 		nodeId = identityService.nodeId();
 		members = hazelcastInstance.getMap(MEMBERS_MAP);
 		entryListenerId = members.addEntryListener(new NeighbourMapListener(), true);
@@ -112,17 +116,11 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 		hazelcastInstance.getLifecycleService().addLifecycleListener(this::onHazelcastStateChange);
 		log.debug("Waiting for initialization to complete.");
 		updateMap();
-		final ListenableScheduledFuture<?> mapUpdateTask = executorService.scheduleAtFixedRate(this::updateMap, 10L,
-		                                                                                       10L, TimeUnit.SECONDS);
-		Futures.addCallback(mapUpdateTask, new FutureCallback<Object>() {
-			@Override public void onSuccess(final Object result) {
-				// Empty
-			}
-
-			@Override public void onFailure(final @NonNull Throwable t) {
-				log.error("Map update failed.", t);
-			}
-		});
+		final ListenableScheduledFuture<?> mapUpdateTask = executorService.scheduleAtFixedRate(this::updateMap,
+		                                                                                       UPDATE_PERIOD_IN_S,
+		                                                                                       UPDATE_PERIOD_IN_S,
+		                                                                                       TimeUnit.SECONDS);
+		Futures.addCallback(mapUpdateTask, new MapUpdateCallback());
 		log.info("Discovery service started.");
 	}
 
@@ -131,7 +129,7 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 		if (hazelcastInstance.getLifecycleService().isRunning()) {
 			cleanUp();
 		}
-		shutdownAndAwaitTermination(executorService, 10L, TimeUnit.SECONDS);
+		shutdownAndAwaitTermination(executorService, UPDATE_PERIOD_IN_S, TimeUnit.SECONDS);
 		running.set(false);
 		log.info("Discovery service stopped.");
 	}
@@ -144,7 +142,9 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 		return Integer.MIN_VALUE + 1;
 	}
 
-	@Override public @NonNull @Immutable Set<@NonNull NodeDescriptor> membersMatching(@NonNull final String criteria) {
+	// Interface methods
+
+	@Override public @NonNull @Immutable Set<@NonNull NodeDescriptor> membersMatching(final @NonNull String criteria) {
 		return ImmutableSet.copyOf(members.values(new SqlPredicate(requireNonNull(criteria))));
 	}
 
@@ -152,13 +152,7 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 		return ImmutableSet.copyOf(members.values());
 	}
 
-	// Wait for "shutting down" event to clean up
-	private void onHazelcastStateChange(final LifecycleEvent event) {
-		log.debug("Hazelcast lifecycle event: {}.", event);
-		if (event.getState() == LifecycleEvent.LifecycleState.SHUTTING_DOWN) {
-			cleanUp();
-		}
-	}
+	// Actions
 
 	private void updateMap() {
 		log.debug("Updating my info in the members map.");
@@ -172,16 +166,40 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 		members.delete(nodeId);
 	}
 
+	// Listeners
+
+	// Wait for "shutting down" event to clean up
+	private void onHazelcastStateChange(final @NonNull LifecycleEvent event) {
+		assert nonNull(event);
+
+		log.debug("Hazelcast lifecycle event: {}.", event);
+		if (event.getState() == LifecycleEvent.LifecycleState.SHUTTING_DOWN) {
+			eventBus.post(new DiscoveryServiceStoppingEvent());
+			cleanUp();
+		}
+	}
+
 	@Immutable
-	private class NeighbourMapListener implements EntryListener<@NonNull String, @NonNull NodeDescriptor> {
+	private static final class MapUpdateCallback implements FutureCallback<Object> {
+		@Override public void onSuccess(final Object result) {
+			// Empty
+		}
+
+		@Override public void onFailure(final @NonNull Throwable t) {
+			log.error("Map update failed.", t);
+		}
+	}
+
+	@Immutable
+	private final class NeighbourMapListener implements EntryListener<@NonNull String, @NonNull NodeDescriptor> {
 		@Override public void entryAdded(final EntryEvent<@NonNull String, @NonNull NodeDescriptor> event) {
 			log.debug("NeighbourMapListener add event: {}.", event);
-			eventBus.post(new MemberAddedEvent(event.getValue()));
+			eventBus.post(new MemberAddedEvent(event.getKey(), event.getValue().type()));
 		}
 
 		@Override public void entryRemoved(final EntryEvent<@NonNull String, @NonNull NodeDescriptor> event) {
 			log.debug("NeighbourMapListener remove event: {}.", event);
-			eventBus.post(new MemberRemovedEvent());
+			eventBus.post(new MemberRemovedEvent(event.getKey()));
 		}
 
 		@Override public void entryUpdated(final EntryEvent<@NonNull String, @NonNull NodeDescriptor> event) {
@@ -190,7 +208,7 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 
 		@Override public void entryEvicted(final EntryEvent<@NonNull String, @NonNull NodeDescriptor> event) {
 			log.debug("NeighbourMapListener evict event: {}.", event);
-			eventBus.post(new MemberRemovedEvent());
+			eventBus.post(new MemberRemovedEvent(event.getKey()));
 		}
 
 		@Override public void mapEvicted(final MapEvent event) {

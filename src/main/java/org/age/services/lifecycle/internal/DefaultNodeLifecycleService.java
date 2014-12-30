@@ -26,6 +26,7 @@ import static com.google.common.collect.Maps.newEnumMap;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
+import org.age.services.discovery.DiscoveryServiceStoppingEvent;
 import org.age.services.lifecycle.LifecycleMessage;
 import org.age.services.lifecycle.NodeDestroyedEvent;
 import org.age.services.lifecycle.NodeLifecycleService;
@@ -34,6 +35,7 @@ import org.age.util.fsm.StateMachineService;
 import org.age.util.fsm.StateMachineServiceBuilder;
 
 import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Message;
@@ -71,6 +73,7 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 		 * Node has been initialized.
 		 */
 		RUNNING,
+		DISCONNECTED,
 		/**
 		 * Node has failed.
 		 */
@@ -91,6 +94,8 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 		 * Sent by the bootstrapper.
 		 */
 		START,
+		CONNECTION_DOWN,
+		RECONNECTED,
 		DESTROY,
 		/**
 		 * Indicates that an error occurred.
@@ -131,6 +136,14 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 
 			.in(State.OFFLINE)
 				.on(Event.START).execute(this::internalStart).goTo(State.RUNNING)
+				.commit()
+
+			.in(State.RUNNING)
+				.on(Event.CONNECTION_DOWN).execute(this::connectionDown).goTo(State.DISCONNECTED)
+				.commit()
+
+			.in(State.DISCONNECTED)
+				.on(Event.RECONNECTED).execute(this::reconnected).goTo(State.RUNNING)
 				.commit()
 
 			.inAnyState()
@@ -209,6 +222,14 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 		log.info("Node lifecycle service stopped.");
 	}
 
+	private void connectionDown(final @NonNull FSM<State, Event> fsm) {
+		log.debug("Connection down.");
+	}
+
+	private void reconnected(final @NonNull FSM<State, Event> fsm) {
+		log.debug("Reconnected.");
+	}
+
 	private void destroy(final @NonNull FSM<State, Event> fsm) {
 		log.info("Destroying the node.");
 		eventBus.post(new NodeDestroyedEvent());
@@ -223,6 +244,11 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 	}
 
 	// Listeners
+
+	@Subscribe private void handleDiscoveryServiceStoppingEvent(final @NonNull DiscoveryServiceStoppingEvent event) {
+		log.debug("Discovery service is stopping.");
+		service.fire(Event.CONNECTION_DOWN);
+	}
 
 	private class DistributedMessageListener implements MessageListener<LifecycleMessage> {
 		@Override public void onMessage(final Message<LifecycleMessage> message) {
