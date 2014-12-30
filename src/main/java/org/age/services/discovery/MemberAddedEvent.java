@@ -22,12 +22,55 @@
  */
 package org.age.services.discovery;
 
-import org.age.services.identity.NodeDescriptor;
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static java.util.Objects.requireNonNull;
 
+import org.age.services.identity.NodeType;
+
+import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.time.LocalDateTime;
+import java.util.Objects;
+
+@Immutable
 public class MemberAddedEvent implements DiscoveryEvent {
-	public MemberAddedEvent(final @NonNull NodeDescriptor value) {
 
+	private final String memberId;
+
+	private final NodeType memberType;
+
+	private final LocalDateTime timestamp = LocalDateTime.now();
+
+	public MemberAddedEvent(final @NonNull String memberId, final @NonNull NodeType memberType) {
+		this.memberId = requireNonNull(memberId);
+		this.memberType = requireNonNull(memberType);
+	}
+
+	public @NonNull String memberId() {
+		return memberId;
+	}
+
+	public @NonNull NodeType memberType() {
+		return memberType;
+	}
+
+	@Override public int hashCode() {
+		return Objects.hash(memberId, memberType, timestamp);
+	}
+
+	@Override public boolean equals(final @Nullable Object obj) {
+		if (!(obj instanceof MemberAddedEvent)) {
+			return false;
+		}
+		final MemberAddedEvent other = (MemberAddedEvent)obj;
+
+		return Objects.equals(memberId, other.memberId) && Objects.equals(memberType, other.memberType)
+		       && Objects.equals(timestamp, other.timestamp);
+	}
+
+	@Override public String toString() {
+		return toStringHelper(this).add("id", memberId).add("type", memberType).toString();
 	}
 }

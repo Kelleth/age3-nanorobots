@@ -17,12 +17,20 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.services.worker;
 /*
- * Created: 21.12.14.
+ * Created: 28.12.14.
  */
 
-import org.checkerframework.checker.igj.qual.Immutable;
+package org.age.services.worker;
 
-@Immutable
-public interface WorkerServiceEvent {}
+import static com.google.common.base.MoreObjects.toStringHelper;
+
+/**
+ * Event sent when the task running in {@link WorkerService} has finished running successfully.
+ */
+public class TaskFinishedEvent implements WorkerServiceEvent {
+
+	@Override public String toString() {
+		return toStringHelper(this).toString();
+	}
+}

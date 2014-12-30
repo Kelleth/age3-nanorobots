@@ -17,12 +17,35 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.services.worker;
 /*
- * Created: 21.12.14.
+ * Created: 28.12.14.
  */
 
-import org.checkerframework.checker.igj.qual.Immutable;
+package org.age.services.worker;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static java.util.Objects.requireNonNull;
+
+import org.checkerframework.checker.igj.qual.Immutable;
+import org.checkerframework.checker.nullness.qual.NonNull;
+
+/**
+ * Event sent when the task running in {@link WorkerService} has failed due to an exception.
+ */
 @Immutable
-public interface WorkerServiceEvent {}
+public class TaskFailedEvent implements WorkerServiceEvent {
+
+	private final Throwable cause;
+
+	public TaskFailedEvent(final @NonNull Throwable cause) {
+		this.cause = requireNonNull(cause);
+	}
+
+	public @NonNull Throwable cause() {
+		return cause;
+	}
+
+	@Override public String toString() {
+		return toStringHelper(this).addValue(cause).toString();
+	}
+}

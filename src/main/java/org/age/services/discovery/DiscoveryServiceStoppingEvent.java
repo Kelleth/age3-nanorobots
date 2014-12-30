@@ -20,46 +20,35 @@
 /*
  * Created by nnidyu on 23.11.14.
  */
-
 package org.age.services.discovery;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static java.util.Objects.requireNonNull;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-public class MemberRemovedEvent implements DiscoveryEvent {
-
-	private final String memberId;
+@Immutable
+public class DiscoveryServiceStoppingEvent implements DiscoveryEvent {
 
 	private final LocalDateTime timestamp = LocalDateTime.now();
 
-	public MemberRemovedEvent(final @NonNull String memberId) {
-		this.memberId = requireNonNull(memberId);
-	}
-
-	public @NonNull String memberId() {
-		return memberId;
-	}
-
 	@Override public int hashCode() {
-		return Objects.hash(memberId, timestamp);
+		return Objects.hash(timestamp);
 	}
 
 	@Override public boolean equals(final @Nullable Object obj) {
-		if (!(obj instanceof MemberRemovedEvent)) {
+		if (!(obj instanceof DiscoveryServiceStoppingEvent)) {
 			return false;
 		}
-		final MemberRemovedEvent other = (MemberRemovedEvent)obj;
+		final DiscoveryServiceStoppingEvent other = (DiscoveryServiceStoppingEvent)obj;
 
-		return Objects.equals(memberId, other.memberId) && Objects.equals(timestamp, other.timestamp);
+		return Objects.equals(timestamp, other.timestamp);
 	}
 
 	@Override public String toString() {
-		return toStringHelper(this).add("id", memberId).toString();
+		return toStringHelper(this).toString();
 	}
 }
