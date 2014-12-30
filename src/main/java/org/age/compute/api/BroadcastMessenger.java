@@ -35,7 +35,7 @@ import javax.annotation.concurrent.ThreadSafe;
  * <p>Implementations need to be thread-safe, as they are presented to possibly multi-threaded compute code.
  */
 @ThreadSafe
-public interface    BroadcastMessenger {
+public interface BroadcastMessenger {
 
 	/**
 	 * Sends the message to all neighbouring workers.
