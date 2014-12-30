@@ -6,7 +6,7 @@ appender("FILE", FileAppender) {
     file = "node-${bySecond}.log"
     append = false
     encoder(PatternLayoutEncoder) {
-        pattern = "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+        pattern = "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{40} - %msg%n"
     }
 }
 
@@ -15,7 +15,7 @@ appender("CONSOLE", ConsoleAppender) {
         level = INFO
     }
     encoder(PatternLayoutEncoder) {
-        pattern = "%highlight(%.-1level) %green(%-36logger{36}) : %msg%n"
+        pattern = "%highlight(%.-1level) %green(%-36logger{40}) : %msg%n"
     }
 }
 
