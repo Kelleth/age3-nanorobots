@@ -23,6 +23,8 @@
 package org.age.console.command;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.collect.Iterables.getOnlyElement;
+import static com.google.common.collect.Maps.newHashMap;
 
 import org.age.services.topology.TopologyService;
 
@@ -32,6 +34,7 @@ import com.beust.jcommander.Parameters;
 
 import jline.console.ConsoleReader;
 
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
@@ -39,7 +42,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -51,23 +60,49 @@ import javax.inject.Named;
 @Parameters(commandNames = "topology", commandDescription = "Topology management", optionPrefixes = "--")
 public class TopologyCommand implements Command {
 
+	private enum Operation {
+		INFO("info");
+
+		private final String operationName;
+
+		Operation(final @NonNull String operationName) {
+			this.operationName = operationName;
+		}
+
+		public String operationName() {
+			return operationName;
+		}
+	}
+
 	private static final Logger log = LoggerFactory.getLogger(TopologyCommand.class);
 
-	@Inject @Named("non-participating") private TopologyService topologyService;
+	private final Map<String, Consumer<@NonNull PrintWriter>> handlers = newHashMap();
 
-	@Parameter(names = "--info") private boolean info;
+	@Inject @Named("non-participating") private @NonNull TopologyService topologyService;
 
+	@Parameter private @MonotonicNonNull List<String> unnamed;
 
-	@Override public boolean execute(@NonNull final JCommander commander, @NonNull final ConsoleReader reader,
-	                                 @NonNull final PrintWriter printWriter) {
-		if (info) {
-			info(printWriter);
-		}
-		return true;
+	public TopologyCommand() {
+		handlers.put(Operation.INFO.operationName(), this::info);
+	}
+
+	@Override public final @NonNull Set<String> operations() {
+		return Arrays.stream(Operation.values()).map(Operation::operationName).collect(Collectors.toSet());
 	}
 
 
-	private void info(final PrintWriter printWriter) {
+	@Override
+	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
+	                    final @NonNull PrintWriter printWriter) {
+		final String command = getOnlyElement(unnamed, "");
+		if (!handlers.containsKey(command)) {
+			printWriter.println("Unknown command " + command);
+			return;
+		}
+		handlers.get(command).accept(printWriter);
+	}
+
+	private void info(final @NonNull PrintWriter printWriter) {
 		final Optional<String> masterId = topologyService.masterId();
 		final Optional<DirectedGraph<String, DefaultEdge>> topology = topologyService.topologyGraph();
 		final Optional<String> topologyType = topologyService.topologyType();

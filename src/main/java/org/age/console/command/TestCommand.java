@@ -23,9 +23,15 @@
 package org.age.console.command;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Strings.isNullOrEmpty;
+import static com.google.common.collect.Iterables.getOnlyElement;
+import static com.google.common.collect.Maps.newHashMap;
+import static java.util.Objects.nonNull;
 
+import org.age.example.SimpleLongRunning;
+import org.age.services.lifecycle.LifecycleMessage;
+import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
 import org.age.services.worker.WorkerMessage;
+import org.age.services.worker.internal.DefaultWorkerService;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -37,6 +43,7 @@ import com.hazelcast.core.ITopic;
 
 import jline.console.ConsoleReader;
 
+import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -48,7 +55,13 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -62,37 +75,67 @@ import javax.inject.Named;
 @Parameters(commandNames = "test", commandDescription = "Run sample computations", optionPrefixes = "--")
 public class TestCommand implements Command {
 
+	private enum Operation {
+		LIST_EXAMPLES("list-examples"),
+		EXECUTE("execute"),
+		COMPUTATION_INTERRUPTED("computation-interrupted");
+
+		private final String operationName;
+
+		Operation(final @NonNull String operationName) {
+			this.operationName = operationName;
+		}
+
+		public String operationName() {
+			return operationName;
+		}
+	}
+
 	private static final String EXAMPLES_PACKAGE = "org.age.example";
 
 	private static final Logger log = LoggerFactory.getLogger(TestCommand.class);
 
-	@Inject private HazelcastInstance hazelcastInstance;
+	private final Map<String, Consumer<@NonNull PrintWriter>> handlers = newHashMap();
 
-	@Parameter(names = "--list-examples") private boolean listExamples;
+	@Inject private @NonNull HazelcastInstance hazelcastInstance;
 
-	@Parameter(names = "--example") private String example;
+	@Parameter private @MonotonicNonNull List<String> unnamed;
 
-	@Parameter(names = "--config") private String config;
+	@Parameter(names = "--example") private @MonotonicNonNull String example;
 
-	@MonotonicNonNull private ITopic<WorkerMessage<?>> topic;
+	@Parameter(names = "--config") private @MonotonicNonNull String config;
 
-	@PostConstruct private void construct() {
-		topic = hazelcastInstance.getTopic("worker/channel");
+	private @MonotonicNonNull ITopic<WorkerMessage<?>> workerTopic;
+
+	private @MonotonicNonNull ITopic<LifecycleMessage> lifecycleTopic;
+
+	public TestCommand() {
+		handlers.put(Operation.LIST_EXAMPLES.operationName(), this::listExamples);
+		handlers.put(Operation.EXECUTE.operationName(), this::executeExample);
+		handlers.put(Operation.COMPUTATION_INTERRUPTED.operationName(), this::computationInterrupted);
 	}
 
-	@Override public boolean execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
-	                                 final @NonNull PrintWriter printWriter) {
-		if (listExamples) {
-			listExamples(printWriter);
-		} else if (!isNullOrEmpty(example)) {
-			runExample();
-		} else if (!isNullOrEmpty(config)) {
-			runConfig(printWriter);
+	@EnsuresNonNull({"workerTopic", "lifecycleTopic"}) @PostConstruct private void construct() {
+		workerTopic = hazelcastInstance.getTopic(DefaultWorkerService.CHANNEL_NAME);
+		lifecycleTopic = hazelcastInstance.getTopic(DefaultNodeLifecycleService.CHANNEL_NAME);
+	}
+
+	@Override public final @NonNull Set<String> operations() {
+		return Arrays.stream(Operation.values()).map(Operation::operationName).collect(Collectors.toSet());
+	}
+
+	@Override
+	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
+	                    final @NonNull PrintWriter printWriter) {
+		final String command = getOnlyElement(unnamed, "");
+		if (!handlers.containsKey(command)) {
+			printWriter.println("Unknown command " + command);
+			return;
 		}
-		return true;
+		handlers.get(command).accept(printWriter);
 	}
 
-	private static void listExamples(final @NonNull PrintWriter printWriter) {
+	private void listExamples(final @NonNull PrintWriter printWriter) {
 		log.debug("Listing examples.");
 		try {
 			final ClassPath classPath = ClassPath.from(TestCommand.class.getClassLoader());
@@ -105,17 +148,26 @@ public class TestCommand implements Command {
 		}
 	}
 
-	private void runExample() {
-		log.debug("Running example.");
-		final String className = EXAMPLES_PACKAGE + '.' + example;
+	private void executeExample(final @NonNull PrintWriter printWriter) {
+		if (nonNull(config)) {
+			runConfig(printWriter);
+		} else if (nonNull(example)) {
+			runExample();
+		}
 
-		topic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CLASS, className));
 		try {
 			TimeUnit.SECONDS.sleep(1L);
 		} catch (final InterruptedException e) {
 			log.debug("Interrupted.", e);
 		}
-		topic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.START_COMPUTATION));
+		workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.START_COMPUTATION));
+	}
+
+	private void runExample() {
+		log.debug("Executing example.");
+		final String className = EXAMPLES_PACKAGE + '.' + example;
+
+		workerTopic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CLASS, className));
 	}
 
 	private void runConfig(final @NonNull PrintWriter printWriter) {
@@ -125,14 +177,29 @@ public class TestCommand implements Command {
 			printWriter.println("File " + config + " does not exist.");
 			return;
 		}
-		topic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CONFIGURATION,
-		                                                       path.normalize().toString()));
+		workerTopic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CONFIGURATION,
+		                                                             path.normalize().toString()));
+	}
+
+	private void computationInterrupted(final @NonNull PrintWriter printWriter) {
+		log.debug("Testing interrupted computation.");
+
+		printWriter.println("Loading class...");
+		workerTopic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CLASS,
+		                                                             SimpleLongRunning.class.getCanonicalName()));
+
+		printWriter.println("Starting computation...");
+		workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.START_COMPUTATION));
+
+		printWriter.println("Waiting...");
 		try {
-			TimeUnit.SECONDS.sleep(1L);
+			TimeUnit.SECONDS.sleep(10L);
 		} catch (final InterruptedException e) {
 			log.debug("Interrupted.", e);
 		}
-		topic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.START_COMPUTATION));
+
+		printWriter.println("Destroying cluster...");
+		lifecycleTopic.publish(LifecycleMessage.createWithoutPayload(LifecycleMessage.Type.DESTROY));
 	}
 
 	@Override public String toString() {

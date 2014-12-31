@@ -26,7 +26,7 @@ import com.google.common.base.CharMatcher;
 
 import jline.console.completer.Completer;
 
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,9 +52,10 @@ public class CommandCompleter implements Completer {
 
 	private static final Logger log = LoggerFactory.getLogger(CommandCompleter.class);
 
-	@Inject private @MonotonicNonNull CommandIntrospector introspector;
+	@Inject private @NonNull CommandIntrospector introspector;
 
-	@Override public int complete(final String buffer, final int cursor, final List<CharSequence> candidates) {
+	@Override
+	public int complete(final @NonNull String buffer, final int cursor, final @NonNull List<CharSequence> candidates) {
 		requireNonNull(buffer);
 		requireNonNull(candidates);
 

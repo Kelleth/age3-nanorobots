@@ -22,15 +22,19 @@ package org.age.console;
 import static java.util.Objects.isNull;
 
 import org.age.console.command.Command;
+import org.age.console.command.HelpCommand;
 import org.age.console.command.MainCommand;
+import org.age.console.command.QuitCommand;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
 import jline.console.ConsoleReader;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -38,6 +42,7 @@ import org.springframework.context.ApplicationContext;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collection;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.annotation.PostConstruct;
@@ -58,11 +63,11 @@ public final class Console {
 
 	private final ConsoleReader reader = new ConsoleReader();
 
-	private final @MonotonicNonNull PrintWriter printWriter;
+	private final PrintWriter printWriter;
 
-	@Inject private @MonotonicNonNull ApplicationContext applicationContext;
+	@Inject private @NonNull ApplicationContext applicationContext;
 
-	@Inject private @MonotonicNonNull CommandCompleter commandCompleter;
+	@Inject private @NonNull CommandCompleter commandCompleter;
 
 	public Console() throws IOException {
 		reader.setPrompt("AgE> ");
@@ -97,12 +102,17 @@ public final class Console {
 					commander = mainCommander.getCommands().get(parsedCommand);
 					command = (Command)Iterables.getOnlyElement(commander.getObjects());
 				}
-				if (!command.execute(commander, reader, printWriter)) {
+				// Because of limitations of JCommander, we need to do this using instanceof
+				if (command instanceof QuitCommand) {
 					break;
 				}
+				if (command instanceof HelpCommand) {
+					mainCommander.usage();
+				}
+				command.execute(commander, reader, printWriter);
 			} catch (final ParameterException e) {
 				log.error("Incorrect command.", e);
-				printWriter.println("Incorrect command." + e.getMessage());
+				printWriter.println("Incorrect command. " + e.getMessage());
 			}
 		}
 	}

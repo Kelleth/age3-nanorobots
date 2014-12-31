@@ -31,30 +31,22 @@ import com.beust.jcommander.Parameters;
 import jline.console.ConsoleReader;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 
 import javax.inject.Named;
 
 /**
- * Command providing an action of clearing the screen.
+ * Command for showing the help.
  */
 @Named
-@Parameters(commandNames = "clear", commandDescription = "Clear screen")
-public class ClearScreenCommand implements Command {
-
-	private static final Logger log = LoggerFactory.getLogger(ClearScreenCommand.class);
+@Parameters(commandNames = "help", commandDescription = "Show the help")
+public class HelpCommand implements Command {
 
 	@Override
 	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
-	                    final @NonNull PrintWriter printWriter) throws IOException {
-		log.debug("Clearing the screen.");
-		reader.clearScreen();
+	                    final @NonNull PrintWriter printWriter) {
 	}
-
 
 	@Override public String toString() {
 		return toStringHelper(this).toString();

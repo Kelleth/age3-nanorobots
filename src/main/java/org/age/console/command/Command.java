@@ -52,10 +52,8 @@ public interface Command {
 	 * 		Current {@link ConsoleReader}.
 	 * @param printWriter
 	 * 		Current writer - command should use this writer for output.
-	 *
-	 * @return True if console should continue, false if the console should raise error or exit.
 	 */
-	boolean execute(@NonNull JCommander commander, @NonNull ConsoleReader reader, @NonNull PrintWriter printWriter)
+	void execute(@NonNull JCommander commander, @NonNull ConsoleReader reader, @NonNull PrintWriter printWriter)
 			throws IOException;
 
 	/**
@@ -64,7 +62,7 @@ public interface Command {
 	 *
 	 * @return suboperations of the command.
 	 */
-	default Set<String> operations() {
+	default @NonNull Set<String> operations() {
 		return emptySet();
 	}
 }

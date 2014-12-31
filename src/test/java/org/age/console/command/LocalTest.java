@@ -27,6 +27,8 @@ import org.age.services.identity.NodeDescriptor;
 import org.age.services.identity.NodeIdentityService;
 import org.age.services.identity.NodeType;
 
+import com.google.common.collect.ImmutableList;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -64,7 +66,7 @@ public final class LocalTest {
 
 	@Test
 	public void testInfo() {
-		localCommandCommand.setInfo(true);
+		localCommandCommand.setUnnamed(ImmutableList.of("info"));
 		localCommandCommand.execute(null, null, printWriter);
 
 		final String output = stringWriter.toString();

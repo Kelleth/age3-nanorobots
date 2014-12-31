@@ -46,12 +46,11 @@ public class QuitCommand implements Command {
 
 	private static final Logger log = LoggerFactory.getLogger(QuitCommand.class);
 
-	@Override public boolean execute(@NonNull final JCommander commander, @NonNull final ConsoleReader reader,
-	                                 @NonNull final PrintWriter printWriter) {
+	@Override
+	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
+	                    final @NonNull PrintWriter printWriter) {
 		log.debug("Quit command called.");
-		return false;
 	}
-
 
 	@Override public String toString() {
 		return toStringHelper(this).toString();

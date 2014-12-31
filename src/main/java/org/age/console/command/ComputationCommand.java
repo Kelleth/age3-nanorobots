@@ -91,9 +91,9 @@ public class ComputationCommand implements Command {
 
 	private final Map<String, Consumer<@NonNull PrintWriter>> handlers = newHashMap();
 
-	@Inject private @MonotonicNonNull HazelcastInstance hazelcastInstance;
+	@Inject private @NonNull HazelcastInstance hazelcastInstance;
 
-	@Inject private DiscoveryService discoveryService;
+	@Inject private @NonNull DiscoveryService discoveryService;
 
 	@Parameter private List<String> unnamed;
 
@@ -117,18 +117,17 @@ public class ComputationCommand implements Command {
 	}
 
 	@Override
-	public boolean execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
-	                       final @NonNull PrintWriter printWriter) {
-		final String command = getOnlyElement(unnamed);
+	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
+	                    final @NonNull PrintWriter printWriter) {
+		final String command = getOnlyElement(unnamed, "");
 		if (!handlers.containsKey(command)) {
 			printWriter.println("Unknown command " + command);
-			return true;
+			return;
 		}
 		handlers.get(command).accept(printWriter);
-		return true;
 	}
 
-	@Override public Set<String> operations() {
+	@NonNull @Override public Set<String> operations() {
 		return Arrays.stream(Operation.values()).map(Operation::operationName).collect(Collectors.toSet());
 	}
 

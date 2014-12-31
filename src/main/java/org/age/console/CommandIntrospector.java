@@ -32,6 +32,8 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterDescription;
 import com.google.common.collect.Sets;
 
+import org.checkerframework.checker.igj.qual.Immutable;
+import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -54,17 +56,18 @@ public class CommandIntrospector {
 
 	private final JCommander commander = new JCommander(new MainCommand());
 
-	@Inject private @MonotonicNonNull Set<Command> commands;
+	@Inject private @NonNull Set<Command> commands;
 
 	private @MonotonicNonNull Map<String, JCommander> commandsMap;
 
-	@PostConstruct private void construct() {
+	@EnsuresNonNull("commandsMap") @PostConstruct
+	private void construct() {
 		log.debug("Injected commands: {}.", commands);
 		commands.forEach(commander::addCommand);
 		commandsMap = commander.getCommands();
 	}
 
-	public @NonNull Set<String> allCommands() {
+	public @NonNull @Immutable Set<String> allCommands() {
 		return commandsMap.keySet();
 	}
 

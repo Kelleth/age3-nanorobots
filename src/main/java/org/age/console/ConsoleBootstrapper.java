@@ -72,5 +72,6 @@ public final class ConsoleBootstrapper {
 			}
 		}
 		log.info("Exiting.");
+		System.exit(0);
 	}
 }

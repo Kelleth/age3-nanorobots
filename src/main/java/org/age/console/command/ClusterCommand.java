@@ -23,10 +23,13 @@
 package org.age.console.command;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.collect.Iterables.getOnlyElement;
+import static com.google.common.collect.Maps.newHashMap;
 
 import org.age.services.discovery.DiscoveryService;
 import org.age.services.identity.NodeDescriptor;
 import org.age.services.lifecycle.LifecycleMessage;
+import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -36,6 +39,7 @@ import com.hazelcast.core.ITopic;
 
 import jline.console.ConsoleReader;
 
+import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -43,7 +47,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
 
 import java.io.PrintWriter;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -57,32 +64,52 @@ import javax.inject.Named;
 @Parameters(commandNames = "cluster", commandDescription = "Cluster management", optionPrefixes = "--")
 public class ClusterCommand implements Command {
 
+	private enum Operation {
+		NODES("nodes"),
+		DESTROY("destroy");
+
+		private final String operationName;
+
+		Operation(final @NonNull String operationName) {
+			this.operationName = operationName;
+		}
+
+		public String operationName() {
+			return operationName;
+		}
+	}
+
 	private static final Logger log = LoggerFactory.getLogger(ClusterCommand.class);
 
-	@Inject private @MonotonicNonNull HazelcastInstance hazelcastInstance;
+	private final Map<String, Consumer<@NonNull PrintWriter>> handlers = newHashMap();
 
-	@Inject private DiscoveryService discoveryService;
+	@Inject private @NonNull HazelcastInstance hazelcastInstance;
 
-	@Parameter(names = "--nodes") private boolean nodes;
+	@Inject private @NonNull DiscoveryService discoveryService;
 
-	@Parameter(names = "--destroy") private boolean destroy;
+	@Parameter private @MonotonicNonNull List<String> unnamed;
 
 	private @MonotonicNonNull ITopic<LifecycleMessage> topic;
 
-	@PostConstruct private void construct() {
-		topic = hazelcastInstance.getTopic("lifecycle/channel");
+	public ClusterCommand() {
+		handlers.put(Operation.NODES.operationName(), this::nodes);
+		handlers.put(Operation.DESTROY.operationName(), this::destroy);
 	}
 
-	@Override public boolean execute(final @NonNull JCommander commander,  final @NonNull  ConsoleReader reader,
-	                                  final @NonNull PrintWriter printWriter) {
-		if (nodes) {
-			nodes(printWriter);
-		} else if (destroy) {
-			destroy(printWriter);
+	@EnsuresNonNull("topic") @PostConstruct private void construct() {
+		topic = hazelcastInstance.getTopic(DefaultNodeLifecycleService.CHANNEL_NAME);
+	}
+
+	@Override
+	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
+	                    final @NonNull PrintWriter printWriter) {
+		final String command = getOnlyElement(unnamed, "");
+		if (!handlers.containsKey(command)) {
+			printWriter.println("Unknown command " + command);
+			return;
 		}
-		return true;
+		handlers.get(command).accept(printWriter);
 	}
-
 
 	private void nodes(final PrintWriter printWriter) {
 		log.debug("Printing information about nodes.");
