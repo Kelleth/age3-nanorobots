@@ -16,8 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 /*
- * Created: 2014-10-07
+ * Created: 2014-12-27
  */
 
 package org.age.example;
@@ -31,16 +32,17 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * The simplest possible computation. Completely detached and having no dependencies and no friends. Long running
- * version.
+ * version that throws an error.
  */
-public class SimpleLongRunning implements Runnable {
+public class SimpleLongRunningWithError implements Runnable {
 
-	private static final Logger log = LoggerFactory.getLogger(SimpleLongRunning.class);
+	private static final Logger log = LoggerFactory.getLogger(SimpleLongRunningWithError.class);
 
+	@SuppressWarnings("ProhibitedExceptionThrown")
 	@Override
 	public void run() {
 		log.info("This is the simplest possible example of a computation.");
-		for (int i = 0; i < 100; i++) {
+		for (int i = 0; i < 10; i++) {
 			log.info("Iteration {}.", i);
 
 			try {
@@ -51,6 +53,9 @@ public class SimpleLongRunning implements Runnable {
 				return;
 			}
 		}
+
+		// This example is testing computational errors so we throw an error
+		throw new RuntimeException("Some computation error");
 	}
 
 	@Override

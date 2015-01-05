@@ -28,6 +28,7 @@ import static com.google.common.collect.Maps.newHashMap;
 import static java.util.Objects.nonNull;
 
 import org.age.example.SimpleLongRunning;
+import org.age.example.SimpleLongRunningWithError;
 import org.age.services.lifecycle.LifecycleMessage;
 import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
 import org.age.services.worker.WorkerMessage;
@@ -91,6 +92,22 @@ public class TestCommand implements Command {
 		}
 	}
 
+	private enum Type {
+		DESTROY("destroy"),
+		COMPUTE_ERROR("compute-error"),
+		NODE_ERROR("node-error");
+
+		private final String typeName;
+
+		Type(final @NonNull String typeName) {
+			this.typeName = typeName;
+		}
+
+		public String typeName() {
+			return typeName;
+		}
+	}
+
 	private static final String EXAMPLES_PACKAGE = "org.age.example";
 
 	private static final Logger log = LoggerFactory.getLogger(TestCommand.class);
@@ -104,6 +121,8 @@ public class TestCommand implements Command {
 	@Parameter(names = "--example") private @MonotonicNonNull String example;
 
 	@Parameter(names = "--config") private @MonotonicNonNull String config;
+
+	@Parameter(names = "--type") private @MonotonicNonNull String type = Type.DESTROY.typeName();
 
 	private @MonotonicNonNull ITopic<WorkerMessage<?>> workerTopic;
 
@@ -181,12 +200,23 @@ public class TestCommand implements Command {
 		                                                             path.normalize().toString()));
 	}
 
+	/**
+	 * Operation to test interrupted computation.
+	 *
+	 * Currently it can run:
+	 * # a computation stopped by cluster destruction,
+	 * # a computation stopping because of its own error.
+	 *
+	 * @param printWriter Print writer.
+	 */
 	private void computationInterrupted(final @NonNull PrintWriter printWriter) {
 		log.debug("Testing interrupted computation.");
 
 		printWriter.println("Loading class...");
-		workerTopic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CLASS,
-		                                                             SimpleLongRunning.class.getCanonicalName()));
+		final String className = type.equals(Type.COMPUTE_ERROR.typeName())
+		                         ? SimpleLongRunningWithError.class.getCanonicalName()
+		                         : SimpleLongRunning.class.getCanonicalName();
+		workerTopic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CLASS, className));
 
 		printWriter.println("Starting computation...");
 		workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.START_COMPUTATION));
@@ -198,8 +228,10 @@ public class TestCommand implements Command {
 			log.debug("Interrupted.", e);
 		}
 
-		printWriter.println("Destroying cluster...");
-		lifecycleTopic.publish(LifecycleMessage.createWithoutPayload(LifecycleMessage.Type.DESTROY));
+		if (type.equals(Type.DESTROY.typeName())) {
+			printWriter.println("Destroying cluster...");
+			lifecycleTopic.publish(LifecycleMessage.createWithoutPayload(LifecycleMessage.Type.DESTROY));
+		}
 	}
 
 	@Override public String toString() {
