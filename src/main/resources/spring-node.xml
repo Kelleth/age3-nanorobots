@@ -28,4 +28,7 @@
 
 	<bean id="worker"
 	      class="org.age.services.worker.internal.DefaultWorkerService"/>
+
+	<bean id="status"
+	      class="org.age.services.status.internal.DefaultStatusService"/>
 </beans>

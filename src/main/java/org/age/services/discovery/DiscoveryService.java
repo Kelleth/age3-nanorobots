@@ -51,4 +51,15 @@ public interface DiscoveryService {
 	 * @return A set of node descriptors.
 	 */
 	@NonNull @Immutable Set<@NonNull NodeDescriptor> allMembers();
+
+	/**
+	 * Returns {@link NodeDescriptor} for the node with the given ID.
+	 *
+	 * @param id an ID to look up.
+	 *
+	 * @return a matching NodeDescriptor.
+	 *
+	 * @throws java.lang.NullPointerException if the entry for the node does not exist.
+	 */
+	@NonNull @Immutable NodeDescriptor memberWithId(final @NonNull String id);
 }

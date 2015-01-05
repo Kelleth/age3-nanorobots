@@ -25,6 +25,7 @@ package org.age.services.discovery.internal;
 
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
@@ -67,6 +68,8 @@ import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import android.support.annotation.Nullable;
+
 @Named
 public final class HazelcastDiscoveryService implements SmartLifecycle, DiscoveryService {
 
@@ -87,7 +90,7 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 
 	@Inject private @NonNull EventBus eventBus;
 
-	private @MonotonicNonNull IMap<@NonNull String, @NonNull NodeDescriptor> members;
+	private @MonotonicNonNull IMap<String, NodeDescriptor> members;
 
 	private @MonotonicNonNull String nodeId;
 
@@ -150,6 +153,14 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 
 	@Override public @NonNull @Immutable Set<@NonNull NodeDescriptor> allMembers() {
 		return ImmutableSet.copyOf(members.values());
+	}
+
+	@Override public @NonNull @Immutable NodeDescriptor memberWithId(final @NonNull String id) {
+		final @Nullable NodeDescriptor descriptor = members.get(requireNonNull(id));
+		if (isNull(descriptor)) {
+			throw new NullPointerException("No such member."); // FIXME: Better exception type
+		}
+		return descriptor;
 	}
 
 	// Actions

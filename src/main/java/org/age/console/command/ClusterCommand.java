@@ -25,16 +25,21 @@ package org.age.console.command;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.collect.Maps.newHashMap;
+import static java.util.Objects.isNull;
 
 import org.age.services.discovery.DiscoveryService;
 import org.age.services.identity.NodeDescriptor;
+import org.age.services.identity.NodeType;
 import org.age.services.lifecycle.LifecycleMessage;
 import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
+import org.age.services.status.Status;
+import org.age.services.status.internal.DefaultStatusService;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
 
 import jline.console.ConsoleReader;
@@ -42,11 +47,13 @@ import jline.console.ConsoleReader;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
 
 import java.io.PrintWriter;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -62,7 +69,7 @@ import javax.inject.Named;
 @Named
 @Scope("prototype")
 @Parameters(commandNames = "cluster", commandDescription = "Cluster management", optionPrefixes = "--")
-public class ClusterCommand implements Command {
+public final class ClusterCommand implements Command {
 
 	private enum Operation {
 		NODES("nodes"),
@@ -89,7 +96,13 @@ public class ClusterCommand implements Command {
 
 	@Parameter private @MonotonicNonNull List<String> unnamed;
 
+	@Parameter(names = "--long") private boolean longOutput = false;
+
+	@Parameter(names = "--id") private @MonotonicNonNull String id;
+
 	private @MonotonicNonNull ITopic<LifecycleMessage> topic;
+
+	private @MonotonicNonNull IMap<String, Status> statusMap;
 
 	public ClusterCommand() {
 		handlers.put(Operation.NODES.operationName(), this::nodes);
@@ -98,6 +111,7 @@ public class ClusterCommand implements Command {
 
 	@EnsuresNonNull("topic") @PostConstruct private void construct() {
 		topic = hazelcastInstance.getTopic(DefaultNodeLifecycleService.CHANNEL_NAME);
+		statusMap = hazelcastInstance.getMap(DefaultStatusService.MAP_NAME);
 	}
 
 	@Override
@@ -111,15 +125,41 @@ public class ClusterCommand implements Command {
 		handlers.get(command).accept(printWriter);
 	}
 
-	private void nodes(final PrintWriter printWriter) {
+	/**
+	 * Prints information about nodes (multiple or single).
+	 */
+	private void nodes(final @NonNull PrintWriter printWriter) {
 		log.debug("Printing information about nodes.");
-		final Set<NodeDescriptor> neighbours = discoveryService.allMembers();
-		neighbours.forEach(printWriter::println);
+		if (isNull(id)) {
+			final Set<NodeDescriptor> neighbours = discoveryService.allMembers();
+			neighbours.forEach(descriptor -> printNode(descriptor, printWriter));
+		} else {
+			final NodeDescriptor descriptor = discoveryService.memberWithId(id);
+			printNode(descriptor, printWriter);
+		}
 	}
 
+	/**
+	 * Destroys the cluster.
+	 */
 	private void destroy(final PrintWriter printWriter) {
 		log.debug("Destroying cluster.");
 		topic.publish(LifecycleMessage.createWithoutPayload(LifecycleMessage.Type.DESTROY));
+	}
+
+	private void printNode(final @NonNull NodeDescriptor descriptor, final @NonNull PrintWriter printWriter) {
+		printWriter.println(String.format("%s - %s", descriptor.id(), descriptor.type()));
+		if (longOutput && (descriptor.type() == NodeType.COMPUTE)) {
+			final @Nullable Status status = statusMap.get(descriptor.id());
+			if (isNull(status)) {
+				printWriter.println("\tNo status for the node. Seems to be an error.");
+				return;
+			}
+			printWriter.println(
+					"\tLast updated: " + status.creationTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+			printWriter.println("\tCaught exceptions:");
+			status.errors().forEach(e -> printWriter.println("\t\t" + e.getMessage()));
+		}
 	}
 
 	@Override public String toString() {
