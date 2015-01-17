@@ -26,6 +26,8 @@ package org.age.services.worker;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
+import org.age.services.ServiceFailureEvent;
+
 import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -33,7 +35,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * Event sent when the task running in {@link WorkerService} has failed due to an exception.
  */
 @Immutable
-public class TaskFailedEvent implements WorkerServiceEvent {
+public final class TaskFailedEvent implements WorkerServiceEvent, ServiceFailureEvent {
 
 	private final Throwable cause;
 
@@ -41,7 +43,11 @@ public class TaskFailedEvent implements WorkerServiceEvent {
 		this.cause = requireNonNull(cause);
 	}
 
-	public @NonNull Throwable cause() {
+	@Override public @NonNull String serviceName() {
+		return WorkerService.class.getSimpleName();
+	}
+
+	@Override public @NonNull Throwable cause() {
 		return cause;
 	}
 

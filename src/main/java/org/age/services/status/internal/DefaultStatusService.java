@@ -28,10 +28,13 @@ import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator
 import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
+import org.age.services.ServiceFailureEvent;
 import org.age.services.identity.NodeIdentityService;
 import org.age.services.lifecycle.NodeLifecycleService;
 import org.age.services.status.Status;
 
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableScheduledFuture;
@@ -78,17 +81,17 @@ public final class DefaultStatusService implements SmartLifecycle {
 
 	@Inject private @NonNull NodeLifecycleService lifecycleService;
 
+	@Inject private @NonNull EventBus eventBus;
+
 	private @MonotonicNonNull String nodeId;
 
 	private @MonotonicNonNull IMap<@NonNull String, @NonNull Status> statusMap;
 
-	@EnsuresNonNull("topic")
+	@EnsuresNonNull({"nodeId", "statusMap"})
 	@PostConstruct private void construct() {
 		nodeId = identityService.nodeId();
 		statusMap = hazelcastInstance.getMap(MAP_NAME);
-		/*topic = hazelcastInstance.getTopic(CHANNEL_NAME);
-		topic.addMessageListener(new DistributedMessageListener());
-		eventBus.register(this);*/
+		eventBus.register(this);
 	}
 
 	@Override public boolean isAutoStartup() {
@@ -136,6 +139,13 @@ public final class DefaultStatusService implements SmartLifecycle {
 		final DefaultStatus.Builder statusBuilder = DefaultStatus.Builder.create();
 		statusBuilder.addErrors(collectedErrors);
 		statusMap.put(nodeId, statusBuilder.buildStatus());
+	}
+
+	// Event handlers
+
+	@Subscribe public void handleServiceFailureEvent(final @NonNull ServiceFailureEvent event) {
+		log.debug("Service failure event: {}.", event);
+		collectedErrors.add(event.cause());
 	}
 
 	@Immutable
