@@ -101,7 +101,6 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		CANCEL_EXECUTION,
 		COMPUTATION_FINISHED,
 		COMPUTATION_FAILED,
-		MEMBER_ADDED,
 		CLEAN,
 		ERROR,
 		TERMINATE
@@ -169,12 +168,10 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 
 			.in(State.OFFLINE)
 				.on(Event.START).execute(this::internalStart).goTo(State.RUNNING)
-				.on(Event.MEMBER_ADDED).goTo(State.OFFLINE)
 				.commit()
 
 			.in(State.RUNNING)
 				.on(Event.CONFIGURE).execute(this::configure).goTo(State.CONFIGURED)
-				.on(Event.MEMBER_ADDED).goTo(State.RUNNING)
 				.commit()
 
 			.in(State.CONFIGURED)
@@ -188,9 +185,16 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 				.on(Event.COMPUTATION_FINISHED).goTo(State.FINISHED)
 			.commit()
 
+			.in(State.PAUSED)
+				.on(Event.RESUME_EXECUTION).execute(this::resumeTask).goTo(State.EXECUTING)
+				.on(Event.CANCEL_EXECUTION).execute(this::cancelTask).goTo(State.COMPUTATION_CANCELED)
+				.on(Event.COMPUTATION_FAILED).goTo(State.COMPUTATION_FAILED)
+				.on(Event.COMPUTATION_FINISHED).goTo(State.FINISHED)
+			.commit()
+
 			.inAnyState()
 				.on(Event.TERMINATE).execute(this::terminate).goTo(State.TERMINATED)
-				.on(Event.ERROR).execute(fsm -> log.debug("ERROR")).goTo(State.FAILED)
+				.on(Event.ERROR).execute(this::handleError).goTo(State.FAILED)
 				.commit()
 
 			.ifFailed()
@@ -277,9 +281,7 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		final TaskBuilder classTaskBuilder = configuration.taskBuilder();
 		prepareContext(classTaskBuilder);
 		taskBuilder = classTaskBuilder;
-		if (topologyService.isLocalNodeMaster()) {
-			configurationMap.put(ConfigurationKey.COMPUTATION_STATE, ComputationState.CONFIGURED);
-		}
+		changeComputationStateIfMaster(ComputationState.CONFIGURED);
 	}
 
 	private void startTask(final @NonNull FSM<State, Event> fsm) {
@@ -298,14 +300,30 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		communicationFacilities.forEach(CommunicationFacility::start);
 		currentTask = taskBuilder.buildAndSchedule(executorService, new ExecutionListener());
 		eventBus.post(new TaskStartedEvent());
-		if (topologyService.isLocalNodeMaster()) {
-			configurationMap.put(ConfigurationKey.COMPUTATION_STATE, ComputationState.RUNNING);
-		}
+		changeComputationStateIfMaster(ComputationState.RUNNING);
 		fsm.goTo(State.EXECUTING);
 	}
 
 	private void pauseTask(final @NonNull FSM<State, Event> fsm) {
+		log.debug("Pausing current task {}.", currentTask);
 
+		if (!isTaskPresent()) {
+			log.info("No task to stop.");
+			return;
+		}
+
+		currentTask.pause();
+	}
+
+	private void resumeTask(final @NonNull FSM<State, Event> fsm) {
+		log.debug("Resuming current task {}.", currentTask);
+
+		if (!isTaskPresent()) {
+			log.info("No task to stop.");
+			return;
+		}
+
+		currentTask.resume();
 	}
 
 	private void cancelTask(final @NonNull FSM<State, Event> fsm) {
@@ -317,10 +335,6 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 
 		if (!isTaskPresent()) {
 			log.info("No task to stop.");
-			return;
-		}
-		if (!currentTask.isRunning()) {
-			log.warn("Task is already stopped.");
 			return;
 		}
 
@@ -372,6 +386,14 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 	private @NonNull ComputationState computationState() {
 		return configurationMap.containsKey(ConfigurationKey.COMPUTATION_STATE)
 		       ? (ComputationState)configurationMap.get(ConfigurationKey.COMPUTATION_STATE) : ComputationState.NONE;
+	}
+
+	private void changeComputationStateIfMaster(final @NonNull ComputationState state) {
+		assert nonNull(state);
+
+		if (topologyService.isLocalNodeMaster()) {
+			configurationMap.put(ConfigurationKey.COMPUTATION_STATE, state);
+		}
 	}
 
 	private void prepareContext(final @NonNull TaskBuilder taskBuilder) {

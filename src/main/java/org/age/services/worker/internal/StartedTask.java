@@ -26,6 +26,8 @@ package org.age.services.worker.internal;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.nonNull;
 
+import org.age.compute.api.Pauseable;
+
 import com.google.common.util.concurrent.ListenableScheduledFuture;
 
 import org.checkerframework.checker.lock.qual.GuardedBy;
@@ -34,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.support.AbstractApplicationContext;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -54,6 +57,8 @@ final class StartedTask {
 	private final String className;
 
 	private final AbstractApplicationContext springContext;
+
+	private final AtomicBoolean paused = new AtomicBoolean(false);
 
 	@GuardedBy("lock") private final Runnable runnable;
 
@@ -116,7 +121,50 @@ final class StartedTask {
 		}
 	}
 
+	void pause() {
+		if (!(runnable instanceof Pauseable)) {
+			log.debug("The task is not pauseable.");
+			return;
+		}
+		if (paused.get()) {
+			log.debug("The task has been already paused.");
+			return;
+		}
+		if (!isRunning()) {
+			log.warn("Cannot pause not running task.");
+			return;
+		}
+
+		log.debug("Pausing the task {}.", runnable);
+		((Pauseable)runnable).pause();
+		paused.set(true);
+	}
+
+	void resume() {
+		if (!(runnable instanceof Pauseable)) {
+			log.debug("The task is not pauseable.");
+			return;
+		}
+		if (!paused.get()) {
+			log.debug("The task has not been paused.");
+			return;
+		}
+		if (!isRunning()) {
+			log.warn("Cannot resume finished task.");
+			return;
+		}
+
+		log.debug("Resuming the task {}.", runnable);
+		((Pauseable)runnable).resume();
+		paused.set(false);
+	}
+
 	void stop() {
+		if (!isRunning()) {
+			log.warn("Task is already stopped.");
+			return;
+		}
+
 		log.debug("Stopping task {}.", runnable);
 		lock.writeLock().lock();
 		try {
@@ -142,4 +190,5 @@ final class StartedTask {
 			lock.readLock().unlock();
 		}
 	}
+
 }
