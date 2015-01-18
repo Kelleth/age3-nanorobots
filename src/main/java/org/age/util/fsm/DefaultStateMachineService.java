@@ -139,7 +139,7 @@ public final class DefaultStateMachineService<S extends Enum<S>, E extends Enum<
 		} else {
 			synchronous = false;
 			service = listeningDecorator(newSingleThreadScheduledExecutor(
-					new ThreadFactoryBuilder().setNameFormat("fsm-" + serviceName + "-srv-%d").build()));
+					new ThreadFactoryBuilder().setNameFormat("fsm-" + serviceName + "-%d").build()));
 			dispatcherFuture = service.scheduleWithFixedDelay(swallowingRunnable(new Dispatcher()), 0L, 1L,
 			                                                  TimeUnit.MILLISECONDS);
 		}
@@ -353,7 +353,10 @@ public final class DefaultStateMachineService<S extends Enum<S>, E extends Enum<
 			try {
 				final Consumer<FSM<S, E>> action = transitionDescriptor.action();
 				log.debug("{}: Executing the planned action {}.", serviceName, action);
+				final String name = Thread.currentThread().getName();
+				Thread.currentThread().setName("fsm-" + serviceName + "-" + transitionDescriptor.event());
 				action.accept(DefaultStateMachineService.this);
+				Thread.currentThread().setName(name);
 				log.debug("{}: Finished the execution of the action.", serviceName);
 				onSuccess(transitionDescriptor);
 			} catch (final Throwable t) {
