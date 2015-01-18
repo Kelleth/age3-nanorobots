@@ -352,7 +352,7 @@ public final class StateMachineServiceBuilder<S extends Enum<S>, E extends Enum<
 
 		if (log.isDebugEnabled()) {
 			table.values().forEach(descriptor -> {
-				if (nonNull(descriptor.initial())) {
+				if (descriptor != TransitionDescriptor.nullDescriptor()) {
 					log.debug("New transition: {}.", descriptor);
 				}
 			});

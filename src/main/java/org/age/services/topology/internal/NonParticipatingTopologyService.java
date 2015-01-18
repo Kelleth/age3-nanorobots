@@ -50,7 +50,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 @Named("non-participating")
-public class NonParticipatingTopologyService implements TopologyService {
+public final class NonParticipatingTopologyService implements TopologyService {
 
 	public static final String CONFIG_MAP_NAME = "topology/config";
 
@@ -68,7 +68,7 @@ public class NonParticipatingTopologyService implements TopologyService {
 
 	@MonotonicNonNull private ITopic<TopologyMessage> topic;
 
-	@PostConstruct public void construct() {
+	@PostConstruct private void construct() {
 		log.debug("Constructing NonParticipatingTopologyService.");
 		// Obtain dependencies
 		runtimeConfig = hazelcastInstance.getMap(CONFIG_MAP_NAME);
@@ -84,6 +84,10 @@ public class NonParticipatingTopologyService implements TopologyService {
 
 	@Override @NonNull public Optional<String> masterId() {
 		return Optional.ofNullable((String)runtimeConfig.get(ConfigKeys.MASTER));
+	}
+
+	@Override public boolean isLocalNodeMaster() {
+		return false;
 	}
 
 	@Override public boolean hasTopology() {

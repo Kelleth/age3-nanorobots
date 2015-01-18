@@ -23,7 +23,6 @@
 
 package org.age.services.worker.internal;
 
-import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Maps.newEnumMap;
 import static com.google.common.collect.Sets.newHashSet;
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
@@ -42,6 +41,9 @@ import org.age.services.worker.TaskFinishedEvent;
 import org.age.services.worker.TaskStartedEvent;
 import org.age.services.worker.WorkerMessage;
 import org.age.services.worker.WorkerService;
+import org.age.util.fsm.FSM;
+import org.age.util.fsm.StateMachineService;
+import org.age.util.fsm.StateMachineServiceBuilder;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
@@ -69,20 +71,52 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication, WorkerService {
+public final class DefaultWorkerService implements SmartLifecycle, WorkerCommunication, WorkerService {
+
+	public enum State {
+		OFFLINE,
+		RUNNING,
+		CONFIGURED,
+		EXECUTING,
+		PAUSED,
+		FINISHED,
+		COMPUTATION_CANCELED,
+		COMPUTATION_FAILED,
+		FAILED,
+		TERMINATED
+	}
+
+	public enum Event {
+		START,
+		CONFIGURE,
+		START_EXECUTION,
+		PAUSE_EXECUTION,
+		RESUME_EXECUTION,
+		CANCEL_EXECUTION,
+		COMPUTATION_FINISHED,
+		COMPUTATION_FAILED,
+		MEMBER_ADDED,
+		CLEAN,
+		ERROR,
+		TERMINATE
+	}
+
+	public enum ConfigurationKey {
+		CONFIGURATION,
+		COMPUTATION_STATE;
+	}
 
 	public static final String CHANNEL_NAME = "worker/channel";
 
-	private static final Logger log = LoggerFactory.getLogger(DefaultWorkerService.class);
+	public static final String CONFIGURATION_MAP_NAME = "worker/config";
 
-	private final AtomicBoolean running = new AtomicBoolean(false);
+	private static final Logger log = LoggerFactory.getLogger(DefaultWorkerService.class);
 
 	private final ListeningScheduledExecutorService executorService = listeningDecorator(newScheduledThreadPool(5));
 
@@ -108,58 +142,92 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 
 	private @MonotonicNonNull ITopic<WorkerMessage<Serializable>> topic;
 
+	private @MonotonicNonNull Map<ConfigurationKey, Object> configurationMap;
+
+	private @MonotonicNonNull StateMachineService<State, Event> service;
+
 	private @Nullable TaskBuilder taskBuilder;
 
 	private @Nullable StartedTask currentTask;
 
-	protected DefaultWorkerService() {
+	private DefaultWorkerService() {
 		Arrays.stream(WorkerMessage.Type.values()).forEach(type -> workerMessageListeners.put(type, newHashSet()));
 
-		messageHandlers.put(WorkerMessage.Type.LOAD_CLASS, this::handleLoadClass);
 		messageHandlers.put(WorkerMessage.Type.LOAD_CONFIGURATION, this::handleLoadConfig);
 		messageHandlers.put(WorkerMessage.Type.START_COMPUTATION, this::handleStartComputation);
 		messageHandlers.put(WorkerMessage.Type.STOP_COMPUTATION, this::handleStopComputation);
 		messageHandlers.put(WorkerMessage.Type.CLEAN_CONFIGURATION, this::handleCleanConfiguration);
 	}
 
-	@EnsuresNonNull("topic")
-	@PostConstruct private void construct() {
+	@EnsuresNonNull("topic") @PostConstruct private void construct() {
+		//@formatter:off
+		service = StateMachineServiceBuilder
+			.withStatesAndEvents(State.class, Event.class)
+			.withName("worker")
+			.startWith(State.OFFLINE)
+			.terminateIn(State.TERMINATED, State.FAILED)
+
+			.in(State.OFFLINE)
+				.on(Event.START).execute(this::internalStart).goTo(State.RUNNING)
+				.on(Event.MEMBER_ADDED).goTo(State.OFFLINE)
+				.commit()
+
+			.in(State.RUNNING)
+				.on(Event.CONFIGURE).execute(this::configure).goTo(State.CONFIGURED)
+				.on(Event.MEMBER_ADDED).goTo(State.RUNNING)
+				.commit()
+
+			.in(State.CONFIGURED)
+				.on(Event.START_EXECUTION).execute(this::startTask).goTo(State.EXECUTING, State.CONFIGURED)
+				.commit()
+
+			.in(State.EXECUTING)
+				.on(Event.PAUSE_EXECUTION).execute(this::pauseTask).goTo(State.PAUSED)
+				.on(Event.CANCEL_EXECUTION).execute(this::cancelTask).goTo(State.COMPUTATION_CANCELED)
+				.on(Event.COMPUTATION_FAILED).goTo(State.COMPUTATION_FAILED)
+				.on(Event.COMPUTATION_FINISHED).goTo(State.FINISHED)
+			.commit()
+
+			.inAnyState()
+				.on(Event.TERMINATE).execute(this::terminate).goTo(State.TERMINATED)
+				.on(Event.ERROR).execute(fsm -> log.debug("ERROR")).goTo(State.FAILED)
+				.commit()
+
+			.ifFailed()
+				.fireAndCall(Event.ERROR, new ExceptionHandler())
+
+			.withEventBus(eventBus)
+			.build();
+		//@formatter:on
+
 		topic = hazelcastInstance.getTopic(CHANNEL_NAME);
 		topic.addMessageListener(new DistributedMessageListener());
+		configurationMap = hazelcastInstance.getReplicatedMap(CONFIGURATION_MAP_NAME);
 		eventBus.register(this);
 	}
 
-	@Override public final boolean isAutoStartup() {
+	@Override public boolean isAutoStartup() {
 		return true;
 	}
 
-	@Override public final void stop(final Runnable callback) {
+	@Override public void stop(final Runnable callback) {
 		stop();
 		callback.run();
 	}
 
-	@Override public final void start() {
-		log.debug("Worker service starting.");
-
-		running.set(true);
-
-		log.info("Worker service started.");
+	@Override public void start() {
+		service.fire(Event.START);
 	}
 
-	@Override public final void stop() {
-		log.debug("Worker service stopping.");
-
-		running.set(false);
-		shutdownAndAwaitTermination(executorService, 10L, TimeUnit.SECONDS);
-
-		log.info("Worker service stopped.");
+	@Override public void stop() {
+		service.fire(Event.TERMINATE);
 	}
 
-	@Override public final boolean isRunning() {
-		return running.get();
+	@Override public boolean isRunning() {
+		return service.isRunning();
 	}
 
-	@Override public final int getPhase() {
+	@Override public int getPhase() {
 		return Integer.MAX_VALUE;
 	}
 
@@ -168,34 +236,128 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 		topic.publish(message);
 	}
 
-	@Override public ListenableScheduledFuture<?> scheduleAtFixedRate(final Runnable command, final long initialDelay,
-	                                                                  final long period, final TimeUnit unit) {
+	@Override
+	public ListenableScheduledFuture<?> scheduleAtFixedRate(final Runnable command, final long initialDelay,
+	                                                        final long period, final TimeUnit unit) {
 		return executorService.scheduleAtFixedRate(command, initialDelay, period, unit);
 	}
 
-	private void handleLoadClass(final @NonNull Serializable payload) {
-		assert nonNull(payload) && (payload instanceof String);
-		setupTaskFromClass((String)payload);
+	// State changes
+
+	private void internalStart(final @NonNull FSM<State, Event> fsm) {
+		log.debug("Worker service starting.");
+
+		if (computationState() == ComputationState.CONFIGURED) {
+			service.fire(Event.CONFIGURE);
+		}
+
+		if (computationState() == ComputationState.RUNNING) {
+			service.fire(Event.CONFIGURE);
+			service.fire(Event.START_EXECUTION);
+		}
+
+		log.info("Worker service started.");
 	}
 
-	private void handleLoadConfig(final @NonNull Serializable payload) {
-		assert nonNull(payload) && (payload instanceof String);
-		setupTaskFromConfig((String)payload);
+	private void terminate(final @NonNull FSM<State, Event> fsm) {
+		log.debug("Topology service stopping.");
+		shutdownAndAwaitTermination(executorService, 10L, TimeUnit.SECONDS);
+		log.info("Topology service stopped.");
+	}
+
+	private void handleError(final @NonNull FSM<State, Event> fsm) {
+
+	}
+
+	private void configure(final @NonNull FSM<State, Event> fsm) {
+		assert !isTaskPresent() : "Task is already configured.";
+
+		final WorkerConfiguration configuration = (WorkerConfiguration)configurationMap.get(
+				ConfigurationKey.CONFIGURATION);
+		final TaskBuilder classTaskBuilder = configuration.taskBuilder();
+		prepareContext(classTaskBuilder);
+		taskBuilder = classTaskBuilder;
+		if (topologyService.isLocalNodeMaster()) {
+			configurationMap.put(ConfigurationKey.COMPUTATION_STATE, ComputationState.CONFIGURED);
+		}
+	}
+
+	private void startTask(final @NonNull FSM<State, Event> fsm) {
+		assert nonNull(taskBuilder);
+
+		if (!isEnvironmentReady()) {
+			log.warn("Trying to start computation when node is not ready.");
+			executorService.schedule(() -> service.fire(Event.START_EXECUTION), 1L, TimeUnit.SECONDS);
+			fsm.goTo(State.CONFIGURED);
+			return;
+		}
+
+		log.debug("Starting task {}.", taskBuilder);
+
+		communicationFacilities.forEach(CommunicationFacility::start);
+		currentTask = taskBuilder.buildAndSchedule(executorService, new ExecutionListener());
+		eventBus.post(new TaskStartedEvent());
+		if (topologyService.isLocalNodeMaster()) {
+			configurationMap.put(ConfigurationKey.COMPUTATION_STATE, ComputationState.RUNNING);
+		}
+		fsm.goTo(State.EXECUTING);
+	}
+
+	private void pauseTask(final @NonNull FSM<State, Event> fsm) {
+
+	}
+
+	private void cancelTask(final @NonNull FSM<State, Event> fsm) {
+
+	}
+
+	private void stopTask(final @NonNull FSM<State, Event> fsm) {
+		log.debug("Stopping current task {}.", currentTask);
+
+		if (!isTaskPresent()) {
+			log.info("No task to stop.");
+			return;
+		}
+		if (!currentTask.isRunning()) {
+			log.warn("Task is already stopped.");
+			return;
+		}
+
+		currentTask.stop();
+	}
+
+	private void cleanUpAfterTask(final @NonNull FSM<State, Event> fsm) {
+		log.debug("Cleaning up after task {}.", currentTask);
+
+		if (!isTaskPresent()) {
+			log.warn("No task to clean up after.");
+		}
+
+		currentTask.cleanUp();
+		currentTask = null;
+		log.debug("Clean up finished.");
+	}
+
+	// Events handlers
+
+	private void handleLoadConfig(final @Nullable Serializable payload) {
+		assert isNull(payload);
+		service.fire(Event.CONFIGURE);
 	}
 
 	private void handleStartComputation(final @Nullable Serializable payload) {
 		assert isNull(payload);
-		startTask();
+		service.fire(Event.START_EXECUTION);
 	}
 
 	private void handleStopComputation(final @Nullable Serializable payload) {
 		assert isNull(payload);
-		stopTask();
+		service.fire(Event.CANCEL_EXECUTION);
 	}
 
 	private void handleCleanConfiguration(final @Nullable Serializable payload) {
 		assert isNull(payload);
-		cleanUpAfterTask();
+		service.fire(Event.CLEAN);
 	}
 
 	private boolean isTaskPresent() {
@@ -206,22 +368,9 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 		return lifecycleService.isRunning() && topologyService.hasTopology();
 	}
 
-	private void setupTaskFromClass(final @NonNull String className) {
-		assert nonNull(className);
-		checkState(!isTaskPresent(), "Task is already configured.");
-
-		final TaskBuilder classTaskBuilder = TaskBuilder.fromClass(className);
-		prepareContext(classTaskBuilder);
-		taskBuilder = classTaskBuilder;
-	}
-
-	private void setupTaskFromConfig(final @NonNull String configPath) {
-		assert nonNull(configPath);
-		checkState(!isTaskPresent(), "Task is already configured.");
-
-		final TaskBuilder configTaskBuilder = TaskBuilder.fromConfig(configPath);
-		prepareContext(configTaskBuilder);
-		taskBuilder = configTaskBuilder;
+	private @NonNull ComputationState computationState() {
+		return configurationMap.containsKey(ConfigurationKey.COMPUTATION_STATE)
+		       ? (ComputationState)configurationMap.get(ConfigurationKey.COMPUTATION_STATE) : ComputationState.NONE;
 	}
 
 	private void prepareContext(final @NonNull TaskBuilder taskBuilder) {
@@ -243,52 +392,11 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 		taskBuilder.finishConfiguration();
 	}
 
-	private void startTask() {
-		assert nonNull(taskBuilder);
-
-		if (!isEnvironmentReady()) {
-			log.warn("Trying to start computation when node is not ready.");
-			// XXX: Maybe enqueue for future start?
-			return;
-		}
-
-		log.debug("Starting task {}.", taskBuilder);
-
-		communicationFacilities.forEach(CommunicationFacility::start);
-		currentTask = taskBuilder.buildAndSchedule(executorService, new ExecutionListener());
-		eventBus.post(new TaskStartedEvent());
-	}
-
-	private void stopTask() {
-		log.debug("Stopping current task {}.", currentTask);
-
-		if (!isTaskPresent()) {
-			log.info("No task to stop.");
-			return;
-		}
-		if (!currentTask.isRunning()) {
-			log.warn("Task is already stopped.");
-			return;
-		}
-
-		currentTask.stop();
-	}
-
-	private void cleanUpAfterTask() {
-		log.debug("Cleaning up after task {}.", currentTask);
-
-		if (!isTaskPresent()) {
-			log.warn("No task to clean up after.");
-		}
-
-		currentTask.cleanUp();
-		currentTask = null;
-		log.debug("Clean up finished.");
-	}
+	// Event bus handlers
 
 	@Subscribe public void handleNodeDestroyedEvent(final @NonNull NodeDestroyedEvent event) {
 		log.debug("Got event: {}.", event);
-		stopTask();
+		service.fire(Event.TERMINATE);
 	}
 
 	private final class DistributedMessageListener implements MessageListener<WorkerMessage<Serializable>> {
@@ -318,7 +426,7 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 					return;
 				}
 
-				messageHandlers.get(workerMessage.type()).accept(workerMessage.payload().orElse(null));
+				messageHandlers.get(type).accept(workerMessage.payload().orElse(null));
 			} catch (final Throwable t) {
 				log.info("T", t);
 			}
@@ -330,18 +438,25 @@ public class DefaultWorkerService implements SmartLifecycle, WorkerCommunication
 		@Override public void onSuccess(final Object result) {
 			log.info("Task {} finished.", currentTask);
 			eventBus.post(new TaskFinishedEvent());
-			cleanUpAfterTask();
+			service.fire(Event.COMPUTATION_FINISHED);
 		}
 
 		@Override public void onFailure(final @NonNull Throwable t) {
 			if (t instanceof CancellationException) {
 				log.debug("Task {} was cancelled. Ignoring exception.", currentTask);
+				service.fire(Event.COMPUTATION_FAILED);
 			} else {
 				log.error("Task {} failed with error.", currentTask, t);
 				eventBus.post(new TaskFailedEvent(t));
+				service.fire(Event.COMPUTATION_FAILED);
 			}
-			cleanUpAfterTask();
 		}
 	}
 
+	private final class ExceptionHandler implements Consumer<Throwable> {
+
+		@Override public void accept(final Throwable throwable) {
+			log.error("Exception", throwable);
+		}
+	}
 }

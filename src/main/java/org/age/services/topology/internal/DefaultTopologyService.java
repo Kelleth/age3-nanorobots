@@ -75,7 +75,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 @Named("default")
-public class DefaultTopologyService implements SmartLifecycle, TopologyService {
+public final class DefaultTopologyService implements SmartLifecycle, TopologyService {
 
 	public static final String CONFIG_MAP_NAME = "topology/config";
 
@@ -250,7 +250,7 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 	private void electMaster(@NonNull final FSM<State, Event> fsm) {
 		log.debug("Locally selecting master.");
 
-		final Set<@NonNull NodeDescriptor> computeNodes = getComputeNodes();
+		final Set<@NonNull NodeDescriptor> computeNodes = computeNodes();
 		final Optional<NodeDescriptor> maxIdentity = computeNodes.parallelStream()
 		                                                       .max(Comparator.comparing(NodeDescriptor::id));
 		log.debug("Max identity is {}.", maxIdentity);
@@ -313,7 +313,7 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 		assert topologyProcessor.isPresent();
 		currentTopologyProcessor = topologyProcessor.get();
 
-		final Set<NodeDescriptor> computeNodes = getComputeNodes();
+		final Set<NodeDescriptor> computeNodes = computeNodes();
 		cachedTopology = currentTopologyProcessor.createGraphFrom(computeNodes);
 		log.debug("Topology: {}.", cachedTopology);
 		runtimeConfig.put(ConfigKeys.TOPOLOGY_GRAPH, cachedTopology);
@@ -347,6 +347,11 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 		return Optional.ofNullable((String)runtimeConfig.get(ConfigKeys.MASTER));
 	}
 
+	@Override public boolean isLocalNodeMaster() {
+		final Optional<String> masterId = masterId();
+		return masterId.isPresent() && masterId.get().equals(identityService.nodeId());
+	}
+
 	@Override public boolean hasTopology() {
 		return service.isInState(State.WITH_TOPOLOGY);
 	}
@@ -374,7 +379,7 @@ public class DefaultTopologyService implements SmartLifecycle, TopologyService {
 		service.fire(Event.MEMBERSHIP_CHANGED);
 	}
 
-	@NonNull protected Set<@NonNull NodeDescriptor> getComputeNodes() {
+	@NonNull protected Set<@NonNull NodeDescriptor> computeNodes() {
 		return discoveryService.membersMatching("type = 'compute'");
 	}
 

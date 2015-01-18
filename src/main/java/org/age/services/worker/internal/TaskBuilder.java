@@ -26,6 +26,7 @@ package org.age.services.worker.internal;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.nonNull;
+import static org.age.util.Runnables.withThreadName;
 
 import org.age.services.worker.FailedComputationSetupException;
 
@@ -144,15 +145,16 @@ final class TaskBuilder {
 		}
 	}
 
-	StartedTask buildAndSchedule(final @NonNull ListeningScheduledExecutorService executorService,
-	                             final @NonNull FutureCallback<Object> executionListener) {
+	@NonNull StartedTask buildAndSchedule(final @NonNull ListeningScheduledExecutorService executorService,
+	                                      final @NonNull FutureCallback<Object> executionListener) {
 		assert nonNull(executorService) && nonNull(executionListener);
 		checkState(isConfigured(), "Task is not configured.");
 
 		try {
 			final Runnable runnable = (Runnable)springContext.getBean("runnable");
 			log.info("Starting execution of {}.", runnable);
-			final ListenableScheduledFuture<?> future = executorService.schedule(runnable, 0L, TimeUnit.SECONDS);
+			final ListenableScheduledFuture<?> future = executorService.schedule(withThreadName("COMPUTE", runnable),
+			                                                                     0L, TimeUnit.SECONDS);
 			Futures.addCallback(future, executionListener);
 			return new StartedTask(className, springContext, runnable, future);
 		} catch (final BeansException e) {
@@ -164,4 +166,6 @@ final class TaskBuilder {
 	@Override public String toString() {
 		return toStringHelper(this).add("classname", className).add("configured", configured.get()).toString();
 	}
+
+
 }

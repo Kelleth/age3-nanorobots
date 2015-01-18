@@ -33,6 +33,8 @@ import org.age.services.lifecycle.LifecycleMessage;
 import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
 import org.age.services.worker.WorkerMessage;
 import org.age.services.worker.internal.DefaultWorkerService;
+import org.age.services.worker.internal.SingleClassConfiguration;
+import org.age.services.worker.internal.SpringConfiguration;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -40,6 +42,7 @@ import com.beust.jcommander.Parameters;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
 
 import jline.console.ConsoleReader;
@@ -51,11 +54,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +75,7 @@ import javax.inject.Named;
 @Named
 @Scope("prototype")
 @Parameters(commandNames = "test", commandDescription = "Run sample computations", optionPrefixes = "--")
-public class TestCommand implements Command {
+public final class TestCommand implements Command {
 
 	private enum Operation {
 		LIST_EXAMPLES("list-examples"),
@@ -126,6 +127,8 @@ public class TestCommand implements Command {
 
 	private @MonotonicNonNull ITopic<WorkerMessage<?>> workerTopic;
 
+	private @MonotonicNonNull Map<DefaultWorkerService.ConfigurationKey, Object> workerConfigurationMap;
+
 	private @MonotonicNonNull ITopic<LifecycleMessage> lifecycleTopic;
 
 	public TestCommand() {
@@ -136,10 +139,11 @@ public class TestCommand implements Command {
 
 	@EnsuresNonNull({"workerTopic", "lifecycleTopic"}) @PostConstruct private void construct() {
 		workerTopic = hazelcastInstance.getTopic(DefaultWorkerService.CHANNEL_NAME);
+		workerConfigurationMap = hazelcastInstance.getReplicatedMap(DefaultWorkerService.CONFIGURATION_MAP_NAME);
 		lifecycleTopic = hazelcastInstance.getTopic(DefaultNodeLifecycleService.CHANNEL_NAME);
 	}
 
-	@Override public final @NonNull Set<String> operations() {
+	@Override public @NonNull Set<String> operations() {
 		return Arrays.stream(Operation.values()).map(Operation::operationName).collect(Collectors.toSet());
 	}
 
@@ -168,11 +172,24 @@ public class TestCommand implements Command {
 	}
 
 	private void executeExample(final @NonNull PrintWriter printWriter) {
-		if (nonNull(config)) {
-			runConfig(printWriter);
-		} else if (nonNull(example)) {
-			runExample();
+		try {
+			if (nonNull(config)) {
+				runConfig();
+			} else if (nonNull(example)) {
+				runExample();
+			}
+		} catch (final FileNotFoundException e) {
+			printWriter.println("File " + config + " does not exist.");
+			return;
 		}
+
+		try {
+			TimeUnit.SECONDS.sleep(1L);
+		} catch (final InterruptedException e) {
+			log.debug("Interrupted.", e);
+		}
+
+		workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.LOAD_CONFIGURATION));
 
 		try {
 			TimeUnit.SECONDS.sleep(1L);
@@ -186,18 +203,14 @@ public class TestCommand implements Command {
 		log.debug("Executing example.");
 		final String className = EXAMPLES_PACKAGE + '.' + example;
 
-		workerTopic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CLASS, className));
+		final SingleClassConfiguration configuration = new SingleClassConfiguration(className);
+		workerConfigurationMap.put(DefaultWorkerService.ConfigurationKey.CONFIGURATION, configuration);
 	}
 
-	private void runConfig(final @NonNull PrintWriter printWriter) {
+	private void runConfig() throws FileNotFoundException {
 		log.debug("Running config.");
-		final Path path = Paths.get(config);
-		if (!Files.exists(path)) {
-			printWriter.println("File " + config + " does not exist.");
-			return;
-		}
-		workerTopic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CONFIGURATION,
-		                                                             path.normalize().toString()));
+		final SpringConfiguration configuration = new SpringConfiguration(config);
+		workerConfigurationMap.put(DefaultWorkerService.ConfigurationKey.CONFIGURATION, configuration);
 	}
 
 	/**
@@ -207,7 +220,8 @@ public class TestCommand implements Command {
 	 * # a computation stopped by cluster destruction,
 	 * # a computation stopping because of its own error.
 	 *
-	 * @param printWriter Print writer.
+	 * @param printWriter
+	 * 		Print writer.
 	 */
 	private void computationInterrupted(final @NonNull PrintWriter printWriter) {
 		log.debug("Testing interrupted computation.");
@@ -216,7 +230,9 @@ public class TestCommand implements Command {
 		final String className = type.equals(Type.COMPUTE_ERROR.typeName())
 		                         ? SimpleLongRunningWithError.class.getCanonicalName()
 		                         : SimpleLongRunning.class.getCanonicalName();
-		workerTopic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CLASS, className));
+		final SingleClassConfiguration configuration = new SingleClassConfiguration(className);
+		workerConfigurationMap.put(DefaultWorkerService.ConfigurationKey.CONFIGURATION, configuration);
+		workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.LOAD_CONFIGURATION));
 
 		printWriter.println("Starting computation...");
 		workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.START_COMPUTATION));

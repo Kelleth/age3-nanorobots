@@ -52,5 +52,7 @@ public interface TopologyService {
 
 	@NonNull Optional<String> masterId();
 
+	boolean isLocalNodeMaster();
+
 	boolean hasTopology();
 }

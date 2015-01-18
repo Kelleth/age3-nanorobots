@@ -46,11 +46,10 @@ import java.util.Set;
  * 		the payload type.
  */
 @Immutable
-public class WorkerMessage<T extends Serializable> implements Serializable {
+public final class WorkerMessage<T extends Serializable> implements Serializable {
 
 	public enum Type {
-		LOAD_CLASS,
-		LOAD_CONFIGURATION,
+		LOAD_CONFIGURATION(false),
 		START_COMPUTATION(false),
 		STOP_COMPUTATION(false),
 		CLEAN_CONFIGURATION(false),
@@ -141,11 +140,11 @@ public class WorkerMessage<T extends Serializable> implements Serializable {
 		return type;
 	}
 
-	public boolean hasType(@NonNull final Type typeToCheck) {
+	public boolean hasType(final @NonNull Type typeToCheck) {
 		return type == requireNonNull(typeToCheck);
 	}
 
-	@NonNull public <X extends T> Optional<@Nullable X> payload() {
+	@NonNull public <X extends T> Optional<X> payload() {
 		return Optional.ofNullable((X)payload);
 	}
 
@@ -158,7 +157,7 @@ public class WorkerMessage<T extends Serializable> implements Serializable {
 		return recipients;
 	}
 
-	public boolean isRecipient(@NonNull final String id) {
+	public boolean isRecipient(final @NonNull String id) {
 		return broadcast || recipients.contains(requireNonNull(id));
 	}
 

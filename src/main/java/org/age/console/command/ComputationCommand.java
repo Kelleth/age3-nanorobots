@@ -31,12 +31,17 @@ import static java.util.Objects.nonNull;
 import org.age.services.discovery.DiscoveryService;
 import org.age.services.identity.NodeDescriptor;
 import org.age.services.lifecycle.LifecycleMessage;
+import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
 import org.age.services.worker.WorkerMessage;
+import org.age.services.worker.internal.DefaultWorkerService;
+import org.age.services.worker.internal.SingleClassConfiguration;
+import org.age.services.worker.internal.SpringConfiguration;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
 
 import jline.console.ConsoleReader;
@@ -47,10 +52,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Scope;
 
+import java.io.FileNotFoundException;
 import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +71,7 @@ import javax.inject.Named;
 @Named
 @Scope("prototype")
 @Parameters(commandNames = "computation", commandDescription = "Computation management", optionPrefixes = "--")
-public class ComputationCommand implements Command {
+public final class ComputationCommand implements Command {
 
 	private enum Operation {
 		LOAD("load"),
@@ -105,6 +108,8 @@ public class ComputationCommand implements Command {
 
 	private @MonotonicNonNull ITopic<WorkerMessage<?>> workerTopic;
 
+	private @MonotonicNonNull Map<DefaultWorkerService.ConfigurationKey, Object> workerConfigurationMap;
+
 	public ComputationCommand() {
 		handlers.put(Operation.LOAD.operationName(), this::load);
 		handlers.put(Operation.INFO.operationName(), this::info);
@@ -113,7 +118,9 @@ public class ComputationCommand implements Command {
 	}
 
 	@PostConstruct private void construct() {
-		lifecycleTopic = hazelcastInstance.getTopic("lifecycle/channel");
+		lifecycleTopic = hazelcastInstance.getTopic(DefaultNodeLifecycleService.CHANNEL_NAME);
+		workerTopic = hazelcastInstance.getTopic(DefaultWorkerService.CHANNEL_NAME);
+		workerConfigurationMap = hazelcastInstance.getReplicatedMap(DefaultWorkerService.CONFIGURATION_MAP_NAME);
 	}
 
 	@Override
@@ -127,7 +134,7 @@ public class ComputationCommand implements Command {
 		handlers.get(command).accept(printWriter);
 	}
 
-	@NonNull @Override public Set<String> operations() {
+	@Override public @NonNull Set<String> operations() {
 		return Arrays.stream(Operation.values()).map(Operation::operationName).collect(Collectors.toSet());
 	}
 
@@ -135,17 +142,19 @@ public class ComputationCommand implements Command {
 		if (nonNull(classToLoad)) {
 			log.debug("Loading class {}.", classToLoad);
 
-			workerTopic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CLASS, classToLoad));
+			final SingleClassConfiguration configuration = new SingleClassConfiguration(classToLoad);
+			workerConfigurationMap.put(DefaultWorkerService.ConfigurationKey.CONFIGURATION, configuration);
+			workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.LOAD_CONFIGURATION));
 		} else if (nonNull(configToLoad)) {
 			log.debug("Loading config from {}.", configToLoad);
 
-			final Path path = Paths.get(configToLoad);
-			if (!Files.exists(path)) {
+			try {
+				final SpringConfiguration configuration = new SpringConfiguration(configToLoad);
+				workerConfigurationMap.put(DefaultWorkerService.ConfigurationKey.CONFIGURATION, configuration);
+			} catch (final FileNotFoundException ignored) {
 				printWriter.println("File " + configToLoad + " does not exist.");
-				return;
 			}
-			workerTopic.publish(WorkerMessage.createBroadcastWithPayload(WorkerMessage.Type.LOAD_CONFIGURATION,
-			                                                             path.normalize().toString()));
+			workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.LOAD_CONFIGURATION));
 		} else {
 			printWriter.println("No class or config to load.");
 		}

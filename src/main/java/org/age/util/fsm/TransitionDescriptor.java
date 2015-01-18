@@ -25,6 +25,7 @@ import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.ImmutableSet;
 
+import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -44,17 +45,21 @@ import java.util.function.Consumer;
  * 		an events type
  */
 @SuppressWarnings("unchecked")
+@Immutable
 final class TransitionDescriptor<S extends Enum<S>, E extends Enum<E>> {
 
 	private static final Consumer<FSM<?, ?>> ILLEGAL_ACTION = fsm -> {
 		throw new IllegalTransitionException("Transition is illegal.");
 	};
 
+	/**
+	 * Placeholder for null descriptor.
+	 */
 	private enum Dummy {
-		ENUM
-	};
+		NULL
+	}
 
-	public static final TransitionDescriptor<?, ?> NULL = new TransitionDescriptor(Dummy.ENUM, Dummy.ENUM, Collections.emptySet(),
+	public static final TransitionDescriptor<?, ?> NULL = new TransitionDescriptor(Dummy.NULL, Dummy.NULL, Collections.emptySet(),
 	                                                                               ILLEGAL_ACTION);
 
 	private static final Consumer<?> EMPTY_ACTION = fsm -> {};
