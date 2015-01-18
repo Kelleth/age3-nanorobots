@@ -18,7 +18,7 @@
  */
 
 /*
- * Created: 2014-10-16
+ * Created: 2014-10-16.
  */
 
 package org.age.console.command;

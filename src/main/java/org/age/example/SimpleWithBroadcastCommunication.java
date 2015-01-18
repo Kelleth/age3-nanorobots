@@ -17,7 +17,7 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*
- * Created: 2014-10-07
+ * Created: 2014-10-07.
  */
 
 package org.age.example;
@@ -58,7 +58,7 @@ public class SimpleWithBroadcastCommunication implements Runnable, MessageListen
 			messenger.send("Test message from " + hashCode());
 
 			try {
-				TimeUnit.SECONDS.sleep(1);
+				TimeUnit.SECONDS.sleep(1L);
 			} catch (final InterruptedException e) {
 				log.debug("Interrupted.", e);
 				Thread.currentThread().interrupt();

@@ -18,7 +18,7 @@
  */
 
 /*
- * Created: 2014-08-21
+ * Created: 2014-08-21.
  */
 
 package org.age.services.discovery.internal;
@@ -202,22 +202,22 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 	}
 
 	@Immutable
-	private final class NeighbourMapListener implements EntryListener<@NonNull String, @NonNull NodeDescriptor> {
-		@Override public void entryAdded(final EntryEvent<@NonNull String, @NonNull NodeDescriptor> event) {
+	private final class NeighbourMapListener implements EntryListener<String, NodeDescriptor> {
+		@Override public void entryAdded(final EntryEvent<String, NodeDescriptor> event) {
 			log.debug("NeighbourMapListener add event: {}.", event);
 			eventBus.post(new MemberAddedEvent(event.getKey(), event.getValue().type()));
 		}
 
-		@Override public void entryRemoved(final EntryEvent<@NonNull String, @NonNull NodeDescriptor> event) {
+		@Override public void entryRemoved(final EntryEvent< String, NodeDescriptor> event) {
 			log.debug("NeighbourMapListener remove event: {}.", event);
 			eventBus.post(new MemberRemovedEvent(event.getKey()));
 		}
 
-		@Override public void entryUpdated(final EntryEvent<@NonNull String, @NonNull NodeDescriptor> event) {
+		@Override public void entryUpdated(final EntryEvent<String, NodeDescriptor> event) {
 			log.debug("NeighbourMapListener update event: {}.", event);
 		}
 
-		@Override public void entryEvicted(final EntryEvent<@NonNull String, @NonNull NodeDescriptor> event) {
+		@Override public void entryEvicted(final EntryEvent<String, NodeDescriptor> event) {
 			log.debug("NeighbourMapListener evict event: {}.", event);
 			eventBus.post(new MemberRemovedEvent(event.getKey()));
 		}

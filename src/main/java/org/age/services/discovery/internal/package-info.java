@@ -18,7 +18,7 @@
  */
 
 /*
- * Created: 27.12.2014.
+ * Created: 2014-12-27.
  */
 /**
  * Private components for the discovery service.

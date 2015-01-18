@@ -18,7 +18,7 @@
  */
 
 /*
- * Created: 2014-08-25
+ * Created: 2014-08-25.
  */
 
 package org.age.services.worker.internal;
@@ -287,6 +287,7 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 
 		if (!isEnvironmentReady()) {
 			log.warn("Trying to start computation when node is not ready.");
+			// Reschedule the event once again
 			executorService.schedule(() -> service.fire(Event.START_EXECUTION), 1L, TimeUnit.SECONDS);
 			fsm.goTo(State.CONFIGURED);
 			return;

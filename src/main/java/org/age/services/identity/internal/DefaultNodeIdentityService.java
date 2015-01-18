@@ -18,7 +18,7 @@
  */
 
 /*
- * Created: 2014-08-22
+ * Created: 2014-08-22.
  */
 
 package org.age.services.identity.internal;

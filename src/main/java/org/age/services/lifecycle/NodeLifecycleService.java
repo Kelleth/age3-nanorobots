@@ -17,11 +17,12 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * Created: 2014-11-22.
+ */
+
 package org.age.services.lifecycle;
 
-/*
- * Created by nnidyu on 22.11.14.
- */
 public interface NodeLifecycleService {
 
 	boolean isRunning();

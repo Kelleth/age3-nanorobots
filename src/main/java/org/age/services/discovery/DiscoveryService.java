@@ -18,7 +18,7 @@
  */
 
 /*
- * Created by nnidyu on 22.11.14.
+ * Created: 2014-11-22.
  */
 
 package org.age.services.discovery;
@@ -31,7 +31,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import java.util.Set;
 
 /**
- * Discovery service is responsible for collecting info about other nodes in the cluster and providing them to other services.
+ * Discovery service is responsible for collecting info about other nodes in the cluster and providing it to other services.
  *
  */
 public interface DiscoveryService {
@@ -61,5 +61,5 @@ public interface DiscoveryService {
 	 *
 	 * @throws java.lang.NullPointerException if the entry for the node does not exist.
 	 */
-	@NonNull @Immutable NodeDescriptor memberWithId(final @NonNull String id);
+	@NonNull @Immutable NodeDescriptor memberWithId(@NonNull String id);
 }

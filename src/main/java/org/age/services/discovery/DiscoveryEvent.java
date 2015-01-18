@@ -16,8 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 /*
- * Created: 2014-08-28
+ * Created: 2014-08-28.
  */
 
 package org.age.services.discovery;

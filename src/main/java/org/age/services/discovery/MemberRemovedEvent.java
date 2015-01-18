@@ -18,7 +18,7 @@
  */
 
 /*
- * Created by nnidyu on 23.11.14.
+ * Created: 2014-11-23.
  */
 
 package org.age.services.discovery;

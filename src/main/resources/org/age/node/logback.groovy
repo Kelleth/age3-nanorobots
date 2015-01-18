@@ -15,7 +15,7 @@ appender("CONSOLE", ConsoleAppender) {
         level = INFO
     }
     encoder(PatternLayoutEncoder) {
-        pattern = "%highlight(%.-1level) %green(%-36logger{40}) : %msg%n"
+        pattern = "%highlight(%.-1level) %green(%-40logger{39}) : %msg%n"
     }
 }
 

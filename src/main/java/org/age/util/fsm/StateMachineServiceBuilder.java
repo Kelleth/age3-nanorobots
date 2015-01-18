@@ -17,7 +17,7 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*
- * Created: 2012-08-21
+ * Created: 2012-08-21.
  * $Id: 53954ddb2f07014defed684e02246fe0ee1a1afa $
  */
 

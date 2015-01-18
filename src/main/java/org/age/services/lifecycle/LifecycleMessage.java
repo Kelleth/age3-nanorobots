@@ -17,7 +17,7 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*
- * Created: 2014-09-18
+ * Created: 2014-09-18.
  */
 
 package org.age.services.lifecycle;

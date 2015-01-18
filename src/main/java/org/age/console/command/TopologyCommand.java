@@ -17,7 +17,7 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*
- * Created: 2014-10-16
+ * Created: 2014-10-16.
  */
 
 package org.age.console.command;

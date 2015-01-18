@@ -18,7 +18,7 @@
  */
 
 /*
- * Created: 2014-10-21
+ * Created: 2014-10-21.
  */
 
 package org.age.services.worker.internal;

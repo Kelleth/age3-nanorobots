@@ -17,7 +17,7 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*
- * Created: 2014-09-19
+ * Created: 2014-09-19.
  */
 
 package org.age.util.fsm;
