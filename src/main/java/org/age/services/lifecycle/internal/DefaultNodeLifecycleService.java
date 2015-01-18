@@ -57,7 +57,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 @Named
-public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycleService {
+public final class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycleService {
 
 	/**
 	 * States of this lifecycle manager (in other words - states of the node).
@@ -245,7 +245,7 @@ public class DefaultNodeLifecycleService implements SmartLifecycle, NodeLifecycl
 
 	// Listeners
 
-	@Subscribe private void handleDiscoveryServiceStoppingEvent(final @NonNull DiscoveryServiceStoppingEvent event) {
+	@Subscribe public void handleDiscoveryServiceStoppingEvent(final @NonNull DiscoveryServiceStoppingEvent event) {
 		log.debug("Discovery service is stopping.");
 		service.fire(Event.CONNECTION_DOWN);
 	}
