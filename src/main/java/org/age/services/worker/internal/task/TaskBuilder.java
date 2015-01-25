@@ -21,7 +21,7 @@
  * Created: 2014-12-20.
  */
 
-package org.age.services.worker.internal;
+package org.age.services.worker.internal.task;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
@@ -56,7 +56,7 @@ import javax.annotation.concurrent.ThreadSafe;
  * It is responsible for data consistency of the task.
  */
 @ThreadSafe
-final class TaskBuilder {
+public final class TaskBuilder {
 
 	private static final Logger log = LoggerFactory.getLogger(TaskBuilder.class);
 
@@ -73,7 +73,7 @@ final class TaskBuilder {
 		this.springContext = springContext;
 	}
 
-	static @NonNull TaskBuilder fromClass(final @NonNull String className) {
+	public static @NonNull TaskBuilder fromClass(final @NonNull String className) {
 		assert nonNull(className);
 
 		try {
@@ -95,7 +95,7 @@ final class TaskBuilder {
 		}
 	}
 
-	static @NonNull TaskBuilder fromConfig(final @NonNull String configPath) {
+	public static @NonNull TaskBuilder fromConfig(final @NonNull String configPath) {
 		assert nonNull(configPath);
 
 		try {
@@ -113,26 +113,26 @@ final class TaskBuilder {
 		}
 	}
 
-	boolean isConfigured() {
+	public boolean isConfigured() {
 		return configured.get();
 	}
 
-	@NonNull String className() {
+	public @NonNull String className() {
 		return className;
 	}
 
-	@NonNull AbstractApplicationContext springContext() {
+	public @NonNull AbstractApplicationContext springContext() {
 		return springContext;
 	}
 
-	void registerSingleton(final @NonNull Object bean) {
+	public void registerSingleton(final @NonNull Object bean) {
 		assert nonNull(bean);
 		checkState(!isConfigured(), "Task is already configured.");
 
 		springContext.getBeanFactory().registerSingleton(bean.getClass().getSimpleName(), bean);
 	}
 
-	void finishConfiguration() {
+	public void finishConfiguration() {
 		checkState(!isConfigured(), "Task is already configured.");
 
 		try {
@@ -145,7 +145,7 @@ final class TaskBuilder {
 		}
 	}
 
-	@NonNull StartedTask buildAndSchedule(final @NonNull ListeningScheduledExecutorService executorService,
+	public @NonNull StartedTask buildAndSchedule(final @NonNull ListeningScheduledExecutorService executorService,
 	                                      final @NonNull FutureCallback<Object> executionListener) {
 		assert nonNull(executorService) && nonNull(executionListener);
 		checkState(isConfigured(), "Task is not configured.");

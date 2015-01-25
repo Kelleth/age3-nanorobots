@@ -26,6 +26,8 @@ package org.age.services.worker.internal;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
+import org.age.services.worker.internal.task.TaskBuilder;
+
 import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.NonNull;
 

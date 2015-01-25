@@ -26,6 +26,7 @@ import static org.mockito.Mockito.RETURNS_MOCKS;
 import static org.mockito.Mockito.when;
 
 import org.age.services.worker.FailedComputationSetupException;
+import org.age.services.worker.internal.task.TaskBuilder;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListenableScheduledFuture;

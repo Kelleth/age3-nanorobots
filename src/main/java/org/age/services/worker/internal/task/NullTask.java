@@ -21,7 +21,7 @@
  * Created: 2015-01-25.
  */
 
-package org.age.services.worker.internal;
+package org.age.services.worker.internal.task;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 

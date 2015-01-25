@@ -23,6 +23,8 @@
 
 package org.age.services.worker.internal;
 
+import org.age.services.worker.internal.task.TaskBuilder;
+
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.Serializable;

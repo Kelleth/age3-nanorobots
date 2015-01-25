@@ -21,7 +21,7 @@
  * Created: 2015-01-25.
  */
 
-package org.age.services.worker.internal;
+package org.age.services.worker.internal.task;
 
 import com.google.common.util.concurrent.ListenableScheduledFuture;
 
