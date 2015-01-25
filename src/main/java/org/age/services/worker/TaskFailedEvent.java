@@ -35,7 +35,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * Event sent when the task running in {@link WorkerService} has failed due to an exception.
  */
 @Immutable
-public final class TaskFailedEvent implements WorkerServiceEvent, ServiceFailureEvent {
+public final class TaskFailedEvent implements TaskEvent, ServiceFailureEvent {
 
 	private final Throwable cause;
 

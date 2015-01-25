@@ -18,22 +18,14 @@
  */
 
 /*
- * Created: 2014-12-21.
+ * Created: 2015-01-25.
  */
 
 package org.age.services.worker;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
-
 import org.checkerframework.checker.igj.qual.Immutable;
 
-/**
- * Event sent when the task has been started in {@link WorkerService}.
- */
 @Immutable
-public class TaskStartedEvent implements TaskEvent {
+public interface TaskEvent extends WorkerServiceEvent {
 
-	@Override public String toString() {
-		return toStringHelper(this).toString();
-	}
 }

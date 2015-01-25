@@ -48,7 +48,7 @@ import javax.annotation.concurrent.ThreadSafe;
  * It is responsible for data consistency of the task.
  */
 @ThreadSafe
-final class StartedTask {
+final class StartedTask implements Task {
 
 	private static final Logger log = LoggerFactory.getLogger(StartedTask.class);
 
@@ -74,7 +74,7 @@ final class StartedTask {
 		this.future = future;
 	}
 
-	boolean isRunning() {
+	@Override public boolean isRunning() {
 		lock.readLock().lock();
 		try {
 			return !future.isDone();
@@ -83,11 +83,11 @@ final class StartedTask {
 		}
 	}
 
-	@NonNull String className() {
+	@Override @NonNull public String className() {
 		return className;
 	}
 
-	@NonNull AbstractApplicationContext springContext() {
+	@Override @NonNull public AbstractApplicationContext springContext() {
 		return springContext;
 	}
 
@@ -97,7 +97,7 @@ final class StartedTask {
 	 * @throws IllegalStateException
 	 * 		when task is not scheduled.
 	 */
-	@NonNull ListenableScheduledFuture<?> future() {
+	@Override @NonNull public ListenableScheduledFuture<?> future() {
 		lock.readLock().lock();
 		try {
 			return future;
@@ -112,7 +112,7 @@ final class StartedTask {
 	 * @throws IllegalStateException
 	 * 		when task is not scheduled.
 	 */
-	@NonNull Runnable runnable() {
+	@Override @NonNull public Runnable runnable() {
 		lock.readLock().lock();
 		try {
 			return runnable;
@@ -121,7 +121,7 @@ final class StartedTask {
 		}
 	}
 
-	void pause() {
+	@Override public void pause() {
 		if (!(runnable instanceof Pauseable)) {
 			log.debug("The task is not pauseable.");
 			return;
@@ -140,7 +140,7 @@ final class StartedTask {
 		paused.set(true);
 	}
 
-	void resume() {
+	@Override public void resume() {
 		if (!(runnable instanceof Pauseable)) {
 			log.debug("The task is not pauseable.");
 			return;
@@ -159,7 +159,7 @@ final class StartedTask {
 		paused.set(false);
 	}
 
-	void stop() {
+	@Override public void stop() {
 		if (!isRunning()) {
 			log.warn("Task is already stopped.");
 			return;
@@ -177,7 +177,7 @@ final class StartedTask {
 		}
 	}
 
-	void cleanUp() {
+	@Override public void cleanUp() {
 		log.debug("Cleaning up after task.");
 		springContext.destroy();
 	}

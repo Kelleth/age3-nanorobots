@@ -17,10 +17,11 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.services.worker;
 /*
  * Created: 2014-12-21.
  */
+
+package org.age.services.worker;
 
 import org.checkerframework.checker.igj.qual.Immutable;
 

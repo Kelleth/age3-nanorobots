@@ -147,7 +147,7 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 
 	private @Nullable TaskBuilder taskBuilder;
 
-	private @Nullable StartedTask currentTask;
+	private @NonNull Task currentTask = NullTask.INSTANCE;
 
 	private DefaultWorkerService() {
 		Arrays.stream(WorkerMessage.Type.values()).forEach(type -> workerMessageListeners.put(type, newHashSet()));
@@ -306,23 +306,11 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 
 	private void pauseTask(final @NonNull FSM<State, Event> fsm) {
 		log.debug("Pausing current task {}.", currentTask);
-
-		if (!isTaskPresent()) {
-			log.info("No task to stop.");
-			return;
-		}
-
 		currentTask.pause();
 	}
 
 	private void resumeTask(final @NonNull FSM<State, Event> fsm) {
 		log.debug("Resuming current task {}.", currentTask);
-
-		if (!isTaskPresent()) {
-			log.info("No task to stop.");
-			return;
-		}
-
 		currentTask.resume();
 	}
 
@@ -332,24 +320,13 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 
 	private void stopTask(final @NonNull FSM<State, Event> fsm) {
 		log.debug("Stopping current task {}.", currentTask);
-
-		if (!isTaskPresent()) {
-			log.info("No task to stop.");
-			return;
-		}
-
 		currentTask.stop();
 	}
 
 	private void cleanUpAfterTask(final @NonNull FSM<State, Event> fsm) {
 		log.debug("Cleaning up after task {}.", currentTask);
-
-		if (!isTaskPresent()) {
-			log.warn("No task to clean up after.");
-		}
-
 		currentTask.cleanUp();
-		currentTask = null;
+		currentTask = NullTask.INSTANCE;
 		log.debug("Clean up finished.");
 	}
 
@@ -376,7 +353,7 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 	}
 
 	private boolean isTaskPresent() {
-		return nonNull(taskBuilder) && nonNull(currentTask);
+		return nonNull(taskBuilder) && !currentTask.equals(NullTask.INSTANCE);
 	}
 
 	private boolean isEnvironmentReady() {

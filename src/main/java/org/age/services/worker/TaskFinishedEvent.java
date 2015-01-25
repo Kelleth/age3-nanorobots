@@ -28,7 +28,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 /**
  * Event sent when the task running in {@link WorkerService} has finished running successfully.
  */
-public class TaskFinishedEvent implements WorkerServiceEvent {
+public class TaskFinishedEvent implements TaskEvent {
 
 	@Override public String toString() {
 		return toStringHelper(this).toString();
