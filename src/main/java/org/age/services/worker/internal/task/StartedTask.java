@@ -24,9 +24,8 @@
 package org.age.services.worker.internal.task;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.nonNull;
-
-import org.age.compute.api.Pauseable;
 
 import com.google.common.util.concurrent.ListenableScheduledFuture;
 
@@ -36,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.support.AbstractApplicationContext;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -48,7 +46,7 @@ import javax.annotation.concurrent.ThreadSafe;
  * It is responsible for data consistency of the task.
  */
 @ThreadSafe
-final class StartedTask implements Task {
+class StartedTask implements Task {
 
 	private static final Logger log = LoggerFactory.getLogger(StartedTask.class);
 
@@ -58,9 +56,7 @@ final class StartedTask implements Task {
 
 	private final AbstractApplicationContext springContext;
 
-	private final AtomicBoolean paused = new AtomicBoolean(false);
-
-	@GuardedBy("lock") private final Runnable runnable;
+	@GuardedBy("lock") protected final Runnable runnable;
 
 	@GuardedBy("lock") private final ListenableScheduledFuture<?> future;
 
@@ -122,41 +118,11 @@ final class StartedTask implements Task {
 	}
 
 	@Override public void pause() {
-		if (!(runnable instanceof Pauseable)) {
-			log.debug("The task is not pauseable.");
-			return;
-		}
-		if (paused.get()) {
-			log.debug("The task has been already paused.");
-			return;
-		}
-		if (!isRunning()) {
-			log.warn("Cannot pause not running task.");
-			return;
-		}
-
-		log.debug("Pausing the task {}.", runnable);
-		((Pauseable)runnable).pause();
-		paused.set(true);
+		log.debug("The task is not pauseable.");
 	}
 
 	@Override public void resume() {
-		if (!(runnable instanceof Pauseable)) {
-			log.debug("The task is not pauseable.");
-			return;
-		}
-		if (!paused.get()) {
-			log.debug("The task has not been paused.");
-			return;
-		}
-		if (!isRunning()) {
-			log.warn("Cannot resume finished task.");
-			return;
-		}
-
-		log.debug("Resuming the task {}.", runnable);
-		((Pauseable)runnable).resume();
-		paused.set(false);
+		log.debug("The task is not pauseable.");
 	}
 
 	@Override public void stop() {
@@ -178,8 +144,28 @@ final class StartedTask implements Task {
 	}
 
 	@Override public void cleanUp() {
+		checkState(!isRunning(), "Task is not stopped.");
+
 		log.debug("Cleaning up after task.");
 		springContext.destroy();
+	}
+
+	@Override public void cancel() {
+		if (!isRunning()) {
+			log.warn("Task is already stopped.");
+			return;
+		}
+
+		log.debug("Stopping task {}.", runnable);
+		lock.writeLock().lock();
+		try {
+			final boolean canceled = future.cancel(true);
+			if (!canceled) {
+				log.warn("Could not cancel the task. Maybe it already stopped?");
+			}
+		} finally {
+			lock.writeLock().unlock();
+		}
 	}
 
 	@Override public String toString() {

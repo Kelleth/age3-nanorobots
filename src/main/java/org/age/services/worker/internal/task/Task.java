@@ -64,4 +64,6 @@ public interface Task {
 	void stop();
 
 	void cleanUp();
+
+	void cancel();
 }

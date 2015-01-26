@@ -31,7 +31,7 @@ package org.age.compute.api;
  * The paused task should not exit the {@link Runnable#run()} method. If it exits the method as a result of the {@link
  * #pause()} call, it will be considered finished.
  */
-public interface Pauseable {
+public interface Pauseable extends Runnable {
 
 	/**
 	 * Pauses the task.

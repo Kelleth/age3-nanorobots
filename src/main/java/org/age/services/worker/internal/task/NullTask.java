@@ -80,6 +80,10 @@ public final class NullTask implements Task {
 		log.warn("Cleaning up NULL task.");
 	}
 
+	@Override public void cancel() {
+		log.warn("Cancelling NULL task.");
+	}
+
 	@Override public boolean equals(final Object obj) {
 		return obj instanceof NullTask;
 	}

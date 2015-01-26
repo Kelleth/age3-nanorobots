@@ -28,6 +28,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.nonNull;
 import static org.age.util.Runnables.withThreadName;
 
+import org.age.compute.api.Pauseable;
 import org.age.services.worker.FailedComputationSetupException;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -129,6 +130,7 @@ public final class TaskBuilder {
 		assert nonNull(bean);
 		checkState(!isConfigured(), "Task is already configured.");
 
+		log.debug("Registering {} as {} in application context.", bean.getClass().getSimpleName(), bean);
 		springContext.getBeanFactory().registerSingleton(bean.getClass().getSimpleName(), bean);
 	}
 
@@ -145,7 +147,7 @@ public final class TaskBuilder {
 		}
 	}
 
-	public @NonNull StartedTask buildAndSchedule(final @NonNull ListeningScheduledExecutorService executorService,
+	public @NonNull Task buildAndSchedule(final @NonNull ListeningScheduledExecutorService executorService,
 	                                      final @NonNull FutureCallback<Object> executionListener) {
 		assert nonNull(executorService) && nonNull(executionListener);
 		checkState(isConfigured(), "Task is not configured.");
@@ -156,6 +158,9 @@ public final class TaskBuilder {
 			final ListenableScheduledFuture<?> future = executorService.schedule(withThreadName("COMPUTE", runnable),
 			                                                                     0L, TimeUnit.SECONDS);
 			Futures.addCallback(future, executionListener);
+			if (runnable instanceof Pauseable) {
+				return new PauseableStartedTask(className, springContext, (Pauseable)runnable, future);
+			}
 			return new StartedTask(className, springContext, runnable, future);
 		} catch (final BeansException e) {
 			log.error("Cannot get runnable from the context.", e);

@@ -27,7 +27,6 @@ import static com.google.common.collect.Maps.newEnumMap;
 import static com.google.common.collect.Sets.newHashSet;
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
-import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newScheduledThreadPool;
@@ -71,6 +70,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
@@ -155,10 +155,10 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 	private DefaultWorkerService() {
 		Arrays.stream(WorkerMessage.Type.values()).forEach(type -> workerMessageListeners.put(type, newHashSet()));
 
-		messageHandlers.put(WorkerMessage.Type.LOAD_CONFIGURATION, this::handleLoadConfig);
-		messageHandlers.put(WorkerMessage.Type.START_COMPUTATION, this::handleStartComputation);
-		messageHandlers.put(WorkerMessage.Type.STOP_COMPUTATION, this::handleStopComputation);
-		messageHandlers.put(WorkerMessage.Type.CLEAN_CONFIGURATION, this::handleCleanConfiguration);
+		messageHandlers.put(WorkerMessage.Type.LOAD_CONFIGURATION, payload -> service.fire(Event.CONFIGURE));
+		messageHandlers.put(WorkerMessage.Type.START_COMPUTATION, payload -> service.fire(Event.START_EXECUTION));
+		messageHandlers.put(WorkerMessage.Type.STOP_COMPUTATION, payload -> service.fire(Event.CANCEL_EXECUTION));
+		messageHandlers.put(WorkerMessage.Type.CLEAN_CONFIGURATION, payload -> service.fire(Event.CLEAN));
 	}
 
 	@EnsuresNonNull("topic") @PostConstruct private void construct() {
@@ -179,6 +179,7 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 
 			.in(State.CONFIGURED)
 				.on(Event.START_EXECUTION).execute(this::startTask).goTo(State.EXECUTING, State.CONFIGURED)
+				.on(Event.CANCEL_EXECUTION).execute(this::cancelTask).goTo(State.COMPUTATION_CANCELED)
 				.commit()
 
 			.in(State.EXECUTING)
@@ -254,6 +255,7 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 	private void internalStart(final @NonNull FSM<State, Event> fsm) {
 		log.debug("Worker service starting.");
 
+		// Catch up to other nodes if computation is running
 		if (computationState() == ComputationState.CONFIGURED) {
 			service.fire(Event.CONFIGURE);
 		}
@@ -318,7 +320,8 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 	}
 
 	private void cancelTask(final @NonNull FSM<State, Event> fsm) {
-
+		log.debug("Cancelling current task {}.", currentTask);
+		currentTask.cancel();
 	}
 
 	private void stopTask(final @NonNull FSM<State, Event> fsm) {
@@ -333,28 +336,6 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		log.debug("Clean up finished.");
 	}
 
-	// Events handlers
-
-	private void handleLoadConfig(final @Nullable Serializable payload) {
-		assert isNull(payload);
-		service.fire(Event.CONFIGURE);
-	}
-
-	private void handleStartComputation(final @Nullable Serializable payload) {
-		assert isNull(payload);
-		service.fire(Event.START_EXECUTION);
-	}
-
-	private void handleStopComputation(final @Nullable Serializable payload) {
-		assert isNull(payload);
-		service.fire(Event.CANCEL_EXECUTION);
-	}
-
-	private void handleCleanConfiguration(final @Nullable Serializable payload) {
-		assert isNull(payload);
-		service.fire(Event.CLEAN);
-	}
-
 	private boolean isTaskPresent() {
 		return nonNull(taskBuilder) && !currentTask.equals(NullTask.INSTANCE);
 	}
@@ -364,8 +345,13 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 	}
 
 	private @NonNull ComputationState computationState() {
-		return configurationMap.containsKey(ConfigurationKey.COMPUTATION_STATE)
-		       ? (ComputationState)configurationMap.get(ConfigurationKey.COMPUTATION_STATE) : ComputationState.NONE;
+		return configurationValue(ConfigurationKey.COMPUTATION_STATE, ComputationState.class).orElseGet(
+				() -> ComputationState.NONE);
+	}
+
+	private <T> @NonNull Optional<T> configurationValue(final @NonNull ConfigurationKey key,
+	                                                    final @NonNull Class<T> klass) {
+		return Optional.ofNullable((T)configurationMap.get(key));
 	}
 
 	private void changeComputationStateIfMaster(final @NonNull ComputationState state) {
@@ -387,7 +373,6 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		log.debug("Registering facilities and adding them as listeners for messages.");
 		communicationFacilities.forEach(service -> {
 			service.subscribedTypes().forEach(key -> workerMessageListeners.get(key).add(service));
-			log.debug("Registering {} as {} in application context.", service.getClass().getSimpleName(), service);
 			taskBuilder.registerSingleton(service);
 		});
 
@@ -456,7 +441,7 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		}
 	}
 
-	private final class ExceptionHandler implements Consumer<Throwable> {
+	private static final class ExceptionHandler implements Consumer<Throwable> {
 
 		@Override public void accept(final Throwable throwable) {
 			log.error("Exception", throwable);

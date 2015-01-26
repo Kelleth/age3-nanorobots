@@ -81,7 +81,7 @@ public final class WorkerMessageTest {
 	}
 
 	@Test public void testBroadcastMessage_correct()  {
-		final WorkerMessage message = new WorkerMessage(WorkerMessage.Type.LOAD_CLASS, PAYLOAD);
+		final WorkerMessage message = new WorkerMessage(WorkerMessage.Type.LOAD_CONFIGURATION, PAYLOAD);
 
 		assertThat(message.isBroadcast()).isTrue();
 		assertThat(message.recipients()).isEmpty();
@@ -95,7 +95,7 @@ public final class WorkerMessageTest {
 	}
 
 	@Test public void testUnicastMessage_correct()  {
-		final WorkerMessage message = new WorkerMessage(WorkerMessage.Type.LOAD_CLASS, ImmutableSet.of(RECEIVER), PAYLOAD);
+		final WorkerMessage message = new WorkerMessage(WorkerMessage.Type.LOAD_CONFIGURATION, ImmutableSet.of(RECEIVER), PAYLOAD);
 
 		assertThat(message.isBroadcast()).isFalse();
 		assertThat(message.recipients()).containsOnly(RECEIVER);
@@ -105,6 +105,6 @@ public final class WorkerMessageTest {
 
 	@Test(expectedExceptions = IllegalArgumentException.class)
 	public void testUnicastMessage_emptyRecipients()  {
-		new WorkerMessage<>(WorkerMessage.Type.LOAD_CLASS, ImmutableSet.of(), PAYLOAD);
+		new WorkerMessage<>(WorkerMessage.Type.LOAD_CONFIGURATION, ImmutableSet.of(), PAYLOAD);
 	}
 }
