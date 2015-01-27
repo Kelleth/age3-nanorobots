@@ -44,7 +44,7 @@ import javax.inject.Named;
  */
 @Named
 @Parameters(commandNames = "clear", commandDescription = "Clear screen")
-public class ClearScreenCommand implements Command {
+public final class ClearScreenCommand implements Command {
 
 	private static final Logger log = LoggerFactory.getLogger(ClearScreenCommand.class);
 

@@ -24,8 +24,6 @@
 package org.age.console.command;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.collect.Iterables.getOnlyElement;
-import static com.google.common.collect.Maps.newHashMap;
 import static java.util.Objects.nonNull;
 
 import org.age.services.discovery.DiscoveryService;
@@ -37,14 +35,10 @@ import org.age.services.worker.internal.DefaultWorkerService;
 import org.age.services.worker.internal.SingleClassConfiguration;
 import org.age.services.worker.internal.SpringConfiguration;
 
-import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
-
-import jline.console.ConsoleReader;
 
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -55,10 +49,8 @@ import org.springframework.context.annotation.Scope;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
@@ -71,7 +63,7 @@ import javax.inject.Named;
 @Named
 @Scope("prototype")
 @Parameters(commandNames = "computation", commandDescription = "Computation management", optionPrefixes = "--")
-public final class ComputationCommand implements Command {
+public final class ComputationCommand extends BaseCommand {
 
 	private enum Operation {
 		LOAD("load"),
@@ -92,13 +84,9 @@ public final class ComputationCommand implements Command {
 
 	private static final Logger log = LoggerFactory.getLogger(ComputationCommand.class);
 
-	private final Map<String, Consumer<@NonNull PrintWriter>> handlers = newHashMap();
-
 	@Inject private @NonNull HazelcastInstance hazelcastInstance;
 
 	@Inject private @NonNull DiscoveryService discoveryService;
-
-	@Parameter private List<String> unnamed;
 
 	@Parameter(names = "--class") private String classToLoad;
 
@@ -111,27 +99,16 @@ public final class ComputationCommand implements Command {
 	private @MonotonicNonNull Map<DefaultWorkerService.ConfigurationKey, Object> workerConfigurationMap;
 
 	public ComputationCommand() {
-		handlers.put(Operation.LOAD.operationName(), this::load);
-		handlers.put(Operation.INFO.operationName(), this::info);
-		handlers.put(Operation.START.operationName(), this::start);
-		handlers.put(Operation.STOP.operationName(), this::stop);
+		addHandler(Operation.LOAD.operationName(), this::load);
+		addHandler(Operation.INFO.operationName(), this::info);
+		addHandler(Operation.START.operationName(), this::start);
+		addHandler(Operation.STOP.operationName(), this::stop);
 	}
 
 	@PostConstruct private void construct() {
 		lifecycleTopic = hazelcastInstance.getTopic(DefaultNodeLifecycleService.CHANNEL_NAME);
 		workerTopic = hazelcastInstance.getTopic(DefaultWorkerService.CHANNEL_NAME);
 		workerConfigurationMap = hazelcastInstance.getReplicatedMap(DefaultWorkerService.CONFIGURATION_MAP_NAME);
-	}
-
-	@Override
-	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
-	                    final @NonNull PrintWriter printWriter) {
-		final String command = getOnlyElement(unnamed, "");
-		if (!handlers.containsKey(command)) {
-			printWriter.println("Unknown command " + command);
-			return;
-		}
-		handlers.get(command).accept(printWriter);
 	}
 
 	@Override public @NonNull Set<String> operations() {

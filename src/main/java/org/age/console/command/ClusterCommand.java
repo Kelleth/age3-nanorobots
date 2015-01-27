@@ -23,8 +23,6 @@
 package org.age.console.command;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.collect.Iterables.getOnlyElement;
-import static com.google.common.collect.Maps.newHashMap;
 import static java.util.Objects.isNull;
 
 import org.age.services.discovery.DiscoveryService;
@@ -35,14 +33,11 @@ import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
 import org.age.services.status.Status;
 import org.age.services.status.internal.DefaultStatusService;
 
-import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
-
-import jline.console.ConsoleReader;
 
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
@@ -54,10 +49,7 @@ import org.springframework.context.annotation.Scope;
 
 import java.io.PrintWriter;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -69,7 +61,7 @@ import javax.inject.Named;
 @Named
 @Scope("prototype")
 @Parameters(commandNames = "cluster", commandDescription = "Cluster management", optionPrefixes = "--")
-public final class ClusterCommand implements Command {
+public final class ClusterCommand extends BaseCommand {
 
 	private enum Operation {
 		NODES("nodes"),
@@ -88,13 +80,9 @@ public final class ClusterCommand implements Command {
 
 	private static final Logger log = LoggerFactory.getLogger(ClusterCommand.class);
 
-	private final Map<String, Consumer<@NonNull PrintWriter>> handlers = newHashMap();
-
 	@Inject private @NonNull HazelcastInstance hazelcastInstance;
 
 	@Inject private @NonNull DiscoveryService discoveryService;
-
-	@Parameter private @MonotonicNonNull List<String> unnamed;
 
 	@Parameter(names = "--long") private boolean longOutput = false;
 
@@ -105,24 +93,13 @@ public final class ClusterCommand implements Command {
 	private @MonotonicNonNull IMap<String, Status> statusMap;
 
 	public ClusterCommand() {
-		handlers.put(Operation.NODES.operationName(), this::nodes);
-		handlers.put(Operation.DESTROY.operationName(), this::destroy);
+		addHandler(Operation.NODES.operationName(), this::nodes);
+		addHandler(Operation.DESTROY.operationName(), this::destroy);
 	}
 
 	@EnsuresNonNull("topic") @PostConstruct private void construct() {
 		topic = hazelcastInstance.getTopic(DefaultNodeLifecycleService.CHANNEL_NAME);
 		statusMap = hazelcastInstance.getMap(DefaultStatusService.MAP_NAME);
-	}
-
-	@Override
-	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
-	                    final @NonNull PrintWriter printWriter) {
-		final String command = getOnlyElement(unnamed, "");
-		if (!handlers.containsKey(command)) {
-			printWriter.println("Unknown command " + command);
-			return;
-		}
-		handlers.get(command).accept(printWriter);
 	}
 
 	/**

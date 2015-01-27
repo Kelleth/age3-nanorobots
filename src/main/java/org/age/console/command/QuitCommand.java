@@ -42,7 +42,7 @@ import javax.inject.Named;
  */
 @Named
 @Parameters(commandNames = {"quit", "exit"}, commandDescription = "Quit the console")
-public class QuitCommand implements Command {
+public final class QuitCommand implements Command {
 
 	private static final Logger log = LoggerFactory.getLogger(QuitCommand.class);
 

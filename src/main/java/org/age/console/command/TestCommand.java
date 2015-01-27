@@ -23,8 +23,6 @@
 package org.age.console.command;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.collect.Iterables.getOnlyElement;
-import static com.google.common.collect.Maps.newHashMap;
 import static java.util.Objects.nonNull;
 
 import org.age.example.SimpleLongRunning;
@@ -36,16 +34,12 @@ import org.age.services.worker.internal.DefaultWorkerService;
 import org.age.services.worker.internal.SingleClassConfiguration;
 import org.age.services.worker.internal.SpringConfiguration;
 
-import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
-
-import jline.console.ConsoleReader;
 
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
@@ -58,11 +52,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
@@ -75,7 +67,7 @@ import javax.inject.Named;
 @Named
 @Scope("prototype")
 @Parameters(commandNames = "test", commandDescription = "Run sample computations", optionPrefixes = "--")
-public final class TestCommand implements Command {
+public final class TestCommand extends BaseCommand {
 
 	private enum Operation {
 		LIST_EXAMPLES("list-examples"),
@@ -113,11 +105,7 @@ public final class TestCommand implements Command {
 
 	private static final Logger log = LoggerFactory.getLogger(TestCommand.class);
 
-	private final Map<String, Consumer<@NonNull PrintWriter>> handlers = newHashMap();
-
 	@Inject private @NonNull HazelcastInstance hazelcastInstance;
-
-	@Parameter private @MonotonicNonNull List<String> unnamed;
 
 	@Parameter(names = "--example") private @MonotonicNonNull String example;
 
@@ -132,9 +120,9 @@ public final class TestCommand implements Command {
 	private @MonotonicNonNull ITopic<LifecycleMessage> lifecycleTopic;
 
 	public TestCommand() {
-		handlers.put(Operation.LIST_EXAMPLES.operationName(), this::listExamples);
-		handlers.put(Operation.EXECUTE.operationName(), this::executeExample);
-		handlers.put(Operation.COMPUTATION_INTERRUPTED.operationName(), this::computationInterrupted);
+		addHandler(Operation.LIST_EXAMPLES.operationName(), this::listExamples);
+		addHandler(Operation.EXECUTE.operationName(), this::executeExample);
+		addHandler(Operation.COMPUTATION_INTERRUPTED.operationName(), this::computationInterrupted);
 	}
 
 	@EnsuresNonNull({"workerTopic", "lifecycleTopic"}) @PostConstruct private void construct() {
@@ -145,17 +133,6 @@ public final class TestCommand implements Command {
 
 	@Override public @NonNull Set<String> operations() {
 		return Arrays.stream(Operation.values()).map(Operation::operationName).collect(Collectors.toSet());
-	}
-
-	@Override
-	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
-	                    final @NonNull PrintWriter printWriter) {
-		final String command = getOnlyElement(unnamed, "");
-		if (!handlers.containsKey(command)) {
-			printWriter.println("Unknown command " + command);
-			return;
-		}
-		handlers.get(command).accept(printWriter);
 	}
 
 	private void listExamples(final @NonNull PrintWriter printWriter) {

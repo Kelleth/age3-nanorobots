@@ -23,20 +23,12 @@
 package org.age.console.command;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.collect.Iterables.getOnlyElement;
-import static com.google.common.collect.Maps.newHashMap;
 
-import org.age.annotation.ForTestsOnly;
 import org.age.services.identity.NodeDescriptor;
 import org.age.services.identity.NodeIdentityService;
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 
-import jline.console.ConsoleReader;
-
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,10 +36,7 @@ import org.springframework.context.annotation.Scope;
 
 import java.io.PrintWriter;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -59,7 +48,7 @@ import javax.inject.Named;
 @Named
 @Scope("prototype")
 @Parameters(commandNames = "local", commandDescription = "Local node management", optionPrefixes = "--")
-public class LocalCommand implements Command {
+public final class LocalCommand extends BaseCommand {
 
 	private enum Operation {
 		INFO("info");
@@ -77,30 +66,14 @@ public class LocalCommand implements Command {
 
 	private static final Logger log = LoggerFactory.getLogger(LocalCommand.class);
 
-	private final Map<String, Consumer<@NonNull PrintWriter>> handlers = newHashMap();
-
 	@Inject private @NonNull NodeIdentityService identityService;
 
-
-	@Parameter private @MonotonicNonNull List<String> unnamed;
-
 	public LocalCommand() {
-		handlers.put(Operation.INFO.operationName(), this::info);
+		addHandler(Operation.INFO.operationName(), this::info);
 	}
 
 	@Override public final @NonNull Set<String> operations() {
 		return Arrays.stream(Operation.values()).map(Operation::operationName).collect(Collectors.toSet());
-	}
-
-	@Override
-	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,
-	                    final @NonNull PrintWriter printWriter) {
-		final String command = getOnlyElement(unnamed, "");
-		if (!handlers.containsKey(command)) {
-			printWriter.println("Unknown command " + command);
-			return;
-		}
-		handlers.get(command).accept(printWriter);
 	}
 
 	private void info(final @NonNull PrintWriter printWriter) {
@@ -114,9 +87,5 @@ public class LocalCommand implements Command {
 
 	@Override public String toString() {
 		return toStringHelper(this).toString();
-	}
-
-	@ForTestsOnly void setUnnamed(final @NonNull List<String> unnamed) {
-		this.unnamed = unnamed;
 	}
 }

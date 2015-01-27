@@ -41,7 +41,7 @@ import javax.inject.Named;
  */
 @Named
 @Parameters(commandNames = "help", commandDescription = "Show the help")
-public class HelpCommand implements Command {
+public final class HelpCommand implements Command {
 
 	@Override
 	public void execute(final @NonNull JCommander commander, final @NonNull ConsoleReader reader,

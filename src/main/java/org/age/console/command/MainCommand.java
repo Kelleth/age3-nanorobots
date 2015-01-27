@@ -39,7 +39,7 @@ import java.io.PrintWriter;
  * Main (empty) command for the console.
  */
 @Parameters(optionPrefixes = "--")
-public class MainCommand implements Command {
+public final class MainCommand implements Command {
 
 	private static final Logger log = LoggerFactory.getLogger(MainCommand.class);
 
