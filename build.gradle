@@ -120,6 +120,30 @@ task node(type: JavaExec) {
     systemProperty "logback.configurationFile", "org/age/node/logback.groovy"
 }
 
+task standalone(dependsOn: 'classes') << {
+    def classpath = sourceSets.main.runtimeClasspath + configurations.runtime
+
+    def command = [
+            'java',
+            '-enableassertions',
+            '-cp', classpath.collect().join(System.getProperty('path.separator')),
+            '-Dlogback.configurationFile=org/age/console/logback.groovy',
+            'org.age.console.StandaloneBootstrapper',
+    ]
+
+    def proc = new ProcessBuilder(command)
+            .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+            .redirectInput(ProcessBuilder.Redirect.INHERIT)
+            .redirectError(ProcessBuilder.Redirect.INHERIT)
+            .start()
+
+    proc.waitFor()
+
+    if (0 != proc.exitValue()) {
+        throw new RuntimeException("console exited with status: ${proc.exitValue()}")
+    }
+}
+
 idea {
     module {
         downloadJavadoc = true
