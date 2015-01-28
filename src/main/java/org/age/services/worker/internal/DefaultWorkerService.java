@@ -161,7 +161,7 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		messageHandlers.put(WorkerMessage.Type.CLEAN_CONFIGURATION, payload -> service.fire(Event.CLEAN));
 	}
 
-	@EnsuresNonNull("topic") @PostConstruct private void construct() {
+	@EnsuresNonNull({"topic", "service", "configurationMap"}) @PostConstruct private void construct() {
 		//@formatter:off
 		service = StateMachineServiceBuilder
 			.withStatesAndEvents(State.class, Event.class)

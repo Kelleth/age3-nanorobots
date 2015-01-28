@@ -25,9 +25,9 @@ package org.age.services.worker.internal;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Sets.newConcurrentHashSet;
-import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
+import org.age.annotation.ForTestsOnly;
 import org.age.compute.api.UnicastMessageListener;
 import org.age.compute.api.UnicastMessenger;
 import org.age.compute.api.WorkerAddress;
@@ -37,7 +37,6 @@ import org.age.services.worker.WorkerMessage;
 import com.google.common.collect.ImmutableSet;
 
 import org.checkerframework.checker.igj.qual.Immutable;
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,13 +55,19 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 
 	private final Set<UnicastMessageListener<Serializable>> listeners = newConcurrentHashSet();
 
+	/**
+	 * Addresses of workers - collected by the messenger itself.
+	 */
 	private final Set<WorkerAddress> computeNeighbours = newConcurrentHashSet();
 
 	private final WorkerAddress localWorkerAddress = new DefaultWorkerAddress();
 
-	@Inject @Named("default") private @MonotonicNonNull TopologyService topologyService;
+	/**
+	 * Topology service - needed for obtaining the node-level neighbours.
+	 */
+	@Inject @Named("default") private @NonNull TopologyService topologyService;
 
-	@Inject private @MonotonicNonNull WorkerCommunication workerCommunication;
+	@Inject private @NonNull WorkerCommunication workerCommunication;
 
 	@Override @Immutable @NonNull public WorkerAddress address() {
 		return localWorkerAddress;
@@ -73,15 +78,13 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 	}
 
 	@Override
-	public <T extends Serializable> void send(@NonNull final WorkerAddress receiver, @NonNull final T message) {
+	public <T extends Serializable> void send(final @NonNull WorkerAddress receiver, final @NonNull T message) {
 		send(ImmutableSet.of(requireNonNull(receiver)), message);
 	}
 
 	@Override
-	public <T extends Serializable> void send(@NonNull final Set<WorkerAddress> receivers, @NonNull final T message) {
-		checkState(isInitialized(), "Messenger was not initialized.");
-
-		final UnicastMessage unicastMessage = new UnicastMessage(localWorkerAddress, requireNonNull(receivers),
+	public <T extends Serializable> void send(final @NonNull Set<WorkerAddress> receivers, final @NonNull T message) {
+		final UnicastMessengerMessage unicastMessage = new UnicastMessengerMessage(localWorkerAddress, requireNonNull(receivers),
 		                                                         requireNonNull(message));
 		log.debug("Sending message {}.", unicastMessage);
 		final Set<String> neighbours = topologyService.neighbours();
@@ -101,16 +104,12 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 		listeners.remove(listener);
 	}
 
-	@Override public <T extends Serializable> boolean onMessage(@NonNull final WorkerMessage<T> workerMessage) {
+	@Override public <T extends Serializable> boolean onMessage(final @NonNull WorkerMessage<T> workerMessage) {
 		log.debug("Received worker message {}.", workerMessage);
 		requireNonNull(workerMessage);
 
-		if (!isInitialized()) {
-			return false;
-		}
-
 		if (workerMessage.hasType(WorkerMessage.Type.UNICAST_MESSAGE)) {
-			final UnicastMessage unicastMessage = (UnicastMessage)workerMessage.requiredPayload();
+			final UnicastMessengerMessage unicastMessage = (UnicastMessengerMessage)workerMessage.requiredPayload();
 
 			if (unicastMessage.isRecipient(localWorkerAddress)) {
 				log.debug("Delivering the message {}.", unicastMessage);
@@ -154,47 +153,9 @@ public final class DefaultUnicastMessenger implements UnicastMessenger, Communic
 		}
 	}
 
-	private boolean isInitialized() {
-		return localWorkerAddress != null;
-	}
-
-	private static final class UnicastMessage implements Serializable {
-
-		private static final long serialVersionUID = 8710738856544239311L;
-
-		@NonNull private final WorkerAddress sender;
-
-		@NonNull private final Set<WorkerAddress> recipients;
-
-		@NonNull private final Serializable payload;
-
-		UnicastMessage(final @NonNull WorkerAddress sender, final @NonNull Set<WorkerAddress> recipients,
-		               final @NonNull Serializable payload) {
-			this.sender = requireNonNull(sender);
-			this.recipients = ImmutableSet.copyOf(requireNonNull(recipients));
-			this.payload = requireNonNull(payload);
-		}
-
-		public @NonNull WorkerAddress sender() {
-			return sender;
-		}
-
-		public @NonNull Set<WorkerAddress> recipients() {
-			return recipients;
-		}
-
-		public boolean isRecipient(@NonNull final WorkerAddress workerAddress) {
-			assert nonNull(workerAddress);
-			return recipients.contains(workerAddress);
-		}
-
-		public @NonNull Serializable payload() {
-			return payload;
-		}
-
-		@Override public String toString() {
-			return toStringHelper(this).add("recipients", recipients).addValue(payload).toString();
-		}
+	@ForTestsOnly void addNeighbour(final @NonNull WorkerAddress workerAddress) {
+		log.debug("Adding new neighbour: {}.", workerAddress);
+		computeNeighbours.add(workerAddress);
 	}
 
 	@Override public String toString() {

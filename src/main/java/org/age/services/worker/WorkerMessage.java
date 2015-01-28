@@ -153,7 +153,7 @@ public final class WorkerMessage<T extends Serializable> implements Serializable
 		return (X)payload;
 	}
 
-	@NonNull protected Set<String> recipients() {
+	@NonNull public Set<String> recipients() {
 		return recipients;
 	}
 

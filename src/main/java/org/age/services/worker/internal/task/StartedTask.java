@@ -70,7 +70,7 @@ class StartedTask implements Task {
 		this.future = future;
 	}
 
-	@Override public boolean isRunning() {
+	@Override public final boolean isRunning() {
 		lock.readLock().lock();
 		try {
 			return !future.isDone();
@@ -79,11 +79,11 @@ class StartedTask implements Task {
 		}
 	}
 
-	@Override @NonNull public String className() {
+	@Override @NonNull public final String className() {
 		return className;
 	}
 
-	@Override @NonNull public AbstractApplicationContext springContext() {
+	@Override @NonNull public final AbstractApplicationContext springContext() {
 		return springContext;
 	}
 
@@ -93,7 +93,7 @@ class StartedTask implements Task {
 	 * @throws IllegalStateException
 	 * 		when task is not scheduled.
 	 */
-	@Override @NonNull public ListenableScheduledFuture<?> future() {
+	@Override @NonNull public final ListenableScheduledFuture<?> future() {
 		lock.readLock().lock();
 		try {
 			return future;
@@ -108,7 +108,7 @@ class StartedTask implements Task {
 	 * @throws IllegalStateException
 	 * 		when task is not scheduled.
 	 */
-	@Override @NonNull public Runnable runnable() {
+	@Override @NonNull public final Runnable runnable() {
 		lock.readLock().lock();
 		try {
 			return runnable;
