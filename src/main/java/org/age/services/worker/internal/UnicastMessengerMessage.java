@@ -52,7 +52,7 @@ final class UnicastMessengerMessage implements Serializable {
 	UnicastMessengerMessage(final @NonNull WorkerAddress sender, final @NonNull Set<WorkerAddress> recipients,
 	                        final @NonNull Serializable payload) {
 		requireNonNull(recipients);
-		checkState(!recipients.isEmpty(), "Receipents set cannot be empty.");
+		checkState(!recipients.isEmpty(), "Recipients set cannot be empty.");
 
 		this.sender = requireNonNull(sender);
 		this.recipients = ImmutableSet.copyOf(recipients);

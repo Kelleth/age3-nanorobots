@@ -34,7 +34,6 @@ import org.age.services.worker.WorkerMessage;
 
 import com.google.common.collect.ImmutableSet;
 
-import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,9 +53,9 @@ public final class DefaultBroadcastMessenger implements BroadcastMessenger, Comm
 
 	private final Set<MessageListener<Serializable>> listeners = newConcurrentHashSet();
 
-	@Inject @Named("default") @MonotonicNonNull private TopologyService topologyService;
+	@Inject @Named("default") private @NonNull TopologyService topologyService;
 
-	@Inject @MonotonicNonNull private WorkerCommunication workerCommunication;
+	@Inject private @NonNull WorkerCommunication workerCommunication;
 
 	@Override public void send(@NonNull final Serializable message) {
 		log.debug("Sending message {}.", message);
@@ -71,7 +70,7 @@ public final class DefaultBroadcastMessenger implements BroadcastMessenger, Comm
 		log.debug("Received worker service message {}.", workerMessage);
 		requireNonNull(workerMessage);
 
-		if (!workerMessage.hasType(WorkerMessage.Type.BROADCAST_MESSAGE)) {
+		if (workerMessage.hasType(WorkerMessage.Type.BROADCAST_MESSAGE)) {
 			final Serializable message = workerMessage.requiredPayload();
 			listeners.parallelStream().forEach(listener -> listener.onMessage(message));
 
