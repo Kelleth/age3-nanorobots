@@ -20,11 +20,12 @@
  * Created: 2014-10-16.
  */
 
-package org.age.console.command;
+package org.age.example.tests;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.nonNull;
 
+import org.age.console.command.BaseCommand;
 import org.age.example.SimpleLongRunning;
 import org.age.example.SimpleLongRunningWithError;
 import org.age.services.lifecycle.LifecycleMessage;

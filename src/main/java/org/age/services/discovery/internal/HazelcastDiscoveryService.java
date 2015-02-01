@@ -36,6 +36,7 @@ import org.age.services.discovery.MemberAddedEvent;
 import org.age.services.discovery.MemberRemovedEvent;
 import org.age.services.identity.NodeDescriptor;
 import org.age.services.identity.NodeIdentityService;
+import org.age.util.Runnables;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.eventbus.EventBus;
@@ -73,7 +74,7 @@ import android.support.annotation.Nullable;
 @Named
 public final class HazelcastDiscoveryService implements SmartLifecycle, DiscoveryService {
 
-	private static final String MEMBERS_MAP = "discovery/members";
+	public static final String MEMBERS_MAP = "discovery/members";
 
 	private static final @s long UPDATE_PERIOD_IN_S = 10L;
 
@@ -119,10 +120,9 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 		hazelcastInstance.getLifecycleService().addLifecycleListener(this::onHazelcastStateChange);
 		log.debug("Waiting for initialization to complete.");
 		updateMap();
-		final ListenableScheduledFuture<?> mapUpdateTask = executorService.scheduleAtFixedRate(this::updateMap,
-		                                                                                       UPDATE_PERIOD_IN_S,
-		                                                                                       UPDATE_PERIOD_IN_S,
-		                                                                                       TimeUnit.SECONDS);
+		final ListenableScheduledFuture<?> mapUpdateTask = executorService.scheduleAtFixedRate(
+				Runnables.withThreadName("discovery-map-update", this::updateMap), UPDATE_PERIOD_IN_S,
+				UPDATE_PERIOD_IN_S, TimeUnit.SECONDS);
 		Futures.addCallback(mapUpdateTask, new MapUpdateCallback());
 		log.info("Discovery service started.");
 	}
@@ -166,7 +166,7 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 	// Actions
 
 	private void updateMap() {
-		log.debug("Updating my info in the members map.");
+		log.debug("Updating my info in the members map: {}.", nodeId);
 		members.set(nodeId, identityService.descriptor());
 		log.debug("Finished update.");
 	}
@@ -208,7 +208,7 @@ public final class HazelcastDiscoveryService implements SmartLifecycle, Discover
 			eventBus.post(new MemberAddedEvent(event.getKey(), event.getValue().type()));
 		}
 
-		@Override public void entryRemoved(final EntryEvent< String, NodeDescriptor> event) {
+		@Override public void entryRemoved(final EntryEvent<String, NodeDescriptor> event) {
 			log.debug("NeighbourMapListener remove event: {}.", event);
 			eventBus.post(new MemberRemovedEvent(event.getKey()));
 		}

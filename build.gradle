@@ -29,6 +29,7 @@ dependencies {
 
     compile 'javax.inject:javax.inject:1'
     compile 'org.springframework:spring-context:+'
+    compile 'org.springframework:spring-test:+'
     compile('com.hazelcast:hazelcast:+') {
         // Not needed and would introduce a lot of duplicated annotations
         exclude group: 'net.sourceforge.findbugs'
@@ -50,17 +51,30 @@ dependencies {
 }
 
 test {
-    useTestNG()
+    useTestNG() {
+        excludeGroups 'integration'
+    }
+}
+
+task integrationTest(type: Test, dependsOn: 'test') {
+    include "**/*IT.class"
+    useTestNG() {
+        includeGroups 'integration'
+    }
+    reports.html.destination = file("${reportsDir}/integration")
+    reports.junitXml.destination = file("${buildDir}/integration-results")
+}
+
+tasks.withType(Test) {
+    scanForTestClasses = false
+    enableAssertions = true
+//    testLogging.showStandardStreams = true
+    include "**/*Test.class"
     options {
         listeners << 'org.uncommons.reportng.HTMLReporter'
         listeners << 'org.uncommons.reportng.JUnitXMLReporter'
     }
     ext.useDefaultListeners = true
-}
-
-tasks.withType(Test) {
-    scanForTestClasses = false
-    include "**/*Test.class"
 }
 
 //allprojects {
