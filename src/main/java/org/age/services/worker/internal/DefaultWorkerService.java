@@ -53,6 +53,7 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListenableScheduledFuture;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.IMap;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Message;
 import com.hazelcast.core.MessageListener;
@@ -68,6 +69,7 @@ import org.springframework.context.SmartLifecycle;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
@@ -118,6 +120,8 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 
 	public static final String CONFIGURATION_MAP_NAME = "worker/config";
 
+	public static final String STATE_MAP_NAME = "worker/state";
+
 	private static final Logger log = LoggerFactory.getLogger(DefaultWorkerService.class);
 
 	private final ListeningScheduledExecutorService executorService = listeningDecorator(newScheduledThreadPool(5));
@@ -145,6 +149,8 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 	private @MonotonicNonNull ITopic<WorkerMessage<Serializable>> topic;
 
 	private @MonotonicNonNull Map<ConfigurationKey, Object> configurationMap;
+
+	private @MonotonicNonNull IMap<String, ComputationState> nodeComputationState;
 
 	private @MonotonicNonNull StateMachineService<State, Event> service;
 
@@ -185,8 +191,8 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 			.in(State.EXECUTING)
 				.on(Event.PAUSE_EXECUTION).execute(this::pauseTask).goTo(State.PAUSED)
 				.on(Event.CANCEL_EXECUTION).execute(this::cancelTask).goTo(State.COMPUTATION_CANCELED)
-				.on(Event.COMPUTATION_FAILED).goTo(State.COMPUTATION_FAILED)
-				.on(Event.COMPUTATION_FINISHED).goTo(State.FINISHED)
+				.on(Event.COMPUTATION_FAILED).execute(this::taskFailed).goTo(State.COMPUTATION_FAILED)
+				.on(Event.COMPUTATION_FINISHED).execute(this::taskFinished).goTo(State.FINISHED)
 			.commit()
 
 			.in(State.PAUSED)
@@ -194,6 +200,10 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 				.on(Event.CANCEL_EXECUTION).execute(this::cancelTask).goTo(State.COMPUTATION_CANCELED)
 				.on(Event.COMPUTATION_FAILED).goTo(State.COMPUTATION_FAILED)
 				.on(Event.COMPUTATION_FINISHED).goTo(State.FINISHED)
+			.commit()
+
+			.in(State.FINISHED)
+				.on(Event.CLEAN).execute(this::cleanUpAfterTask).goTo(State.RUNNING)
 			.commit()
 
 			.inAnyState()
@@ -211,6 +221,7 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		topic = hazelcastInstance.getTopic(CHANNEL_NAME);
 		topic.addMessageListener(new DistributedMessageListener());
 		configurationMap = hazelcastInstance.getReplicatedMap(CONFIGURATION_MAP_NAME);
+		nodeComputationState = hazelcastInstance.getMap(STATE_MAP_NAME);
 		eventBus.register(this);
 	}
 
@@ -255,12 +266,14 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 	private void internalStart(final @NonNull FSM<State, Event> fsm) {
 		log.debug("Worker service starting.");
 
+		setNodeComputationState(ComputationState.NONE);
+
 		// Catch up to other nodes if computation is running
-		if (computationState() == ComputationState.CONFIGURED) {
+		if (globalComputationState() == ComputationState.CONFIGURED) {
 			service.fire(Event.CONFIGURE);
 		}
 
-		if (computationState() == ComputationState.RUNNING) {
+		if (globalComputationState() == ComputationState.RUNNING) {
 			service.fire(Event.CONFIGURE);
 			service.fire(Event.START_EXECUTION);
 		}
@@ -286,7 +299,8 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		final TaskBuilder classTaskBuilder = configuration.taskBuilder();
 		prepareContext(classTaskBuilder);
 		taskBuilder = classTaskBuilder;
-		changeComputationStateIfMaster(ComputationState.CONFIGURED);
+		setNodeComputationState(ComputationState.CONFIGURED);
+		changeGlobalComputationStateIfMaster(ComputationState.CONFIGURED);
 	}
 
 	private void startTask(final @NonNull FSM<State, Event> fsm) {
@@ -305,7 +319,8 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		communicationFacilities.forEach(CommunicationFacility::start);
 		currentTask = taskBuilder.buildAndSchedule(executorService, new ExecutionListener());
 		eventBus.post(new TaskStartedEvent());
-		changeComputationStateIfMaster(ComputationState.RUNNING);
+		setNodeComputationState(ComputationState.RUNNING);
+		changeGlobalComputationStateIfMaster(ComputationState.RUNNING);
 		fsm.goTo(State.EXECUTING);
 	}
 
@@ -329,10 +344,26 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		currentTask.stop();
 	}
 
+	private void taskFinished(final @NonNull FSM<State, Event> fsm) {
+		setNodeComputationState(ComputationState.FINISHED);
+		final Collection<ComputationState> states = nodeComputationState.values(
+				v -> v.getValue() != ComputationState.FINISHED);
+		if (states.isEmpty()) {
+			log.debug("All nodes finished computation.");
+			changeGlobalComputationStateIfMaster(ComputationState.FINISHED);
+		}
+	}
+
+	private void taskFailed(final @NonNull FSM<State, Event> fsm) {
+		changeGlobalComputationStateIfMaster(ComputationState.FAILED);
+	}
+
 	private void cleanUpAfterTask(final @NonNull FSM<State, Event> fsm) {
 		log.debug("Cleaning up after task {}.", currentTask);
 		currentTask.cleanUp();
 		currentTask = NullTask.INSTANCE;
+		setNodeComputationState(ComputationState.NONE);
+		changeGlobalComputationStateIfMaster(ComputationState.NONE);
 		log.debug("Clean up finished.");
 	}
 
@@ -344,9 +375,18 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		return lifecycleService.isRunning() && topologyService.hasTopology();
 	}
 
-	private @NonNull ComputationState computationState() {
+	private @NonNull ComputationState globalComputationState() {
 		return configurationValue(ConfigurationKey.COMPUTATION_STATE, ComputationState.class).orElseGet(
 				() -> ComputationState.NONE);
+	}
+
+	private @NonNull ComputationState nodeComputationState() {
+		return nodeComputationState.get(identityService.nodeId());
+	}
+
+	private void setNodeComputationState(final @NonNull ComputationState state) {
+		assert nonNull(state);
+		nodeComputationState.set(identityService.nodeId(), state);
 	}
 
 	private <T> @NonNull Optional<T> configurationValue(final @NonNull ConfigurationKey key,
@@ -354,7 +394,7 @@ public final class DefaultWorkerService implements SmartLifecycle, WorkerCommuni
 		return Optional.ofNullable((T)configurationMap.get(key));
 	}
 
-	private void changeComputationStateIfMaster(final @NonNull ComputationState state) {
+	private void changeGlobalComputationStateIfMaster(final @NonNull ComputationState state) {
 		assert nonNull(state);
 
 		if (topologyService.isLocalNodeMaster()) {

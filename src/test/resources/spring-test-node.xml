@@ -15,6 +15,11 @@
 				<!-- Let spring handle the shutdown. -->
 				<hz:property name="hazelcast.shutdownhook.enabled">false</hz:property>
 			</hz:properties>
+			<hz:network port="5701" port-auto-increment="false">
+				<hz:join>
+					<hz:multicast enabled="false" />
+				</hz:join>
+			</hz:network>
 			<hz:map name="discovery/members" max-idle-seconds="20" />
 
 		</hz:config>

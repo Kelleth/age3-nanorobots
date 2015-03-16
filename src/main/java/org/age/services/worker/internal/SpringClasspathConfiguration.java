@@ -18,44 +18,35 @@
  */
 
 /*
- * Created: 2014-12-28.
+ * Created: 2015-02-10.
  */
 
-package org.age.services.worker;
+package org.age.services.worker.internal;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-import org.age.services.ServiceFailureEvent;
+import org.age.services.worker.internal.task.TaskBuilder;
 
 import org.checkerframework.checker.igj.qual.Immutable;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-import java.time.LocalDateTime;
-
-/**
- * Event sent when the task running in {@link WorkerService} has failed due to an exception.
- */
 @Immutable
-public final class TaskFailedEvent implements TaskEvent, ServiceFailureEvent {
+public final class SpringClasspathConfiguration implements WorkerConfiguration {
 
-	private final Throwable cause;
+	private static final long serialVersionUID = 4719974331488707814L;
 
-	private final LocalDateTime timestamp = LocalDateTime.now();
+	private final String classpathLocation;
 
-	public TaskFailedEvent(final @NonNull Throwable cause) {
-		this.cause = requireNonNull(cause);
+	public SpringClasspathConfiguration(final @NonNull String classpathLocation) {
+		this.classpathLocation = requireNonNull(classpathLocation);
 	}
 
-	@Override public @NonNull String serviceName() {
-		return WorkerService.class.getSimpleName();
-	}
-
-	@Override public @NonNull Throwable cause() {
-		return cause;
+	@Override public @NonNull TaskBuilder taskBuilder() {
+		return TaskBuilder.fromClasspathConfig(classpathLocation);
 	}
 
 	@Override public String toString() {
-		return toStringHelper(this).addValue(cause).toString();
+		return toStringHelper(this).addValue(classpathLocation).toString();
 	}
 }

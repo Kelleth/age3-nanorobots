@@ -44,6 +44,7 @@ import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.AbstractApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.context.support.FileSystemXmlApplicationContext;
 
 import java.util.concurrent.TimeUnit;
@@ -104,6 +105,24 @@ public final class TaskBuilder {
 
 			log.debug("Creating internal Spring context.");
 			final FileSystemXmlApplicationContext taskContext = new FileSystemXmlApplicationContext(configPath);
+
+			log.debug("Task setup finished.");
+
+			return new TaskBuilder(taskContext.getType("runnable").getCanonicalName(), taskContext);
+		} catch (final BeanCreationException e) {
+			log.error("Cannot create the task from file.", e);
+			throw new FailedComputationSetupException("Cannot create the task from file", e);
+		}
+	}
+
+	public static @NonNull TaskBuilder fromClasspathConfig(final @NonNull String configPath) {
+		assert nonNull(configPath);
+
+		try {
+			log.debug("Setting up task from config {}.", configPath);
+
+			log.debug("Creating internal Spring context.");
+			final ClassPathXmlApplicationContext taskContext = new ClassPathXmlApplicationContext(configPath);
 
 			log.debug("Task setup finished.");
 

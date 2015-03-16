@@ -23,6 +23,7 @@
 
 package org.age.services.topology.internal;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.util.concurrent.MoreExecutors.listeningDecorator;
 import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
@@ -225,14 +226,14 @@ public final class DefaultTopologyService implements SmartLifecycle, TopologySer
 
 		topic.addMessageListener(new DistributedMessageListener());
 		eventBus.register(this);
-		
+
 		log.info("Topology service started.");
 		service.fire(Event.STARTED);
 	}
 
 	private void internalStop(@NonNull final FSM<State, Event> fsm) {
 		log.debug("Topology service stopping.");
-		shutdownAndAwaitTermination(executorService, 10, TimeUnit.SECONDS);
+		shutdownAndAwaitTermination(executorService, 10L, TimeUnit.SECONDS);
 		log.info("Topology service stopped.");
 	}
 
@@ -252,7 +253,7 @@ public final class DefaultTopologyService implements SmartLifecycle, TopologySer
 
 		final Set<@NonNull NodeDescriptor> computeNodes = computeNodes();
 		final Optional<NodeDescriptor> maxIdentity = computeNodes.parallelStream()
-		                                                       .max(Comparator.comparing(NodeDescriptor::id));
+		                                                         .max(Comparator.comparing(NodeDescriptor::id));
 		log.debug("Max identity is {}.", maxIdentity);
 
 		assert maxIdentity.isPresent();
@@ -394,6 +395,13 @@ public final class DefaultTopologyService implements SmartLifecycle, TopologySer
 	@Subscribe public void handleNodeDestroyedEvent(final @NonNull NodeDestroyedEvent event) {
 		log.debug("Got event: {}.", event);
 		service.fire(Event.STOP);
+	}
+
+	@Override public String toString() {
+		return toStringHelper(this).add("state", service.currentState())
+		                           .add("topology-type", topologyType())
+		                           .add("graph", topologyGraph())
+		                           .toString();
 	}
 
 	private class TopologyTypeChangeListener extends EntryAdapter<String, Object> {

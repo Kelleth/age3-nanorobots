@@ -43,6 +43,7 @@ import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.testng.AbstractTestNGSpringContextTests;
 import org.testng.annotations.BeforeClass;
@@ -55,7 +56,8 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 
 @ContextConfiguration("classpath:spring-test-node.xml")
-public class DiscoveryIT extends AbstractTestNGSpringContextTests {
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+public final class DiscoveryIT extends AbstractTestNGSpringContextTests {
 
 	@Inject private @NonNull HazelcastDiscoveryService discoveryService;
 
@@ -81,11 +83,11 @@ public class DiscoveryIT extends AbstractTestNGSpringContextTests {
 		events.clear();
 	}
 
-	@Test(groups = "integration", description = "Is service running?") public void testIfIsRunning() {
+	@Test(groups = "integration") public void testIfIsRunning() {
 		assertThat(discoveryService.isRunning()).isTrue();
 	}
 
-	@Test(groups = "integration", description = "Is service putting the local node descriptor into the map?")
+	@Test(groups = "integration")
 	public void testIfServicePutsItselfIntoMap() throws InterruptedException {
 		final String nodeId = identityService.nodeId();
 		// Give it some time to put entry into map

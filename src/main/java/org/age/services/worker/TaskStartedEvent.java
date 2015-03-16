@@ -27,11 +27,15 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 
 import org.checkerframework.checker.igj.qual.Immutable;
 
+import java.time.LocalDateTime;
+
 /**
  * Event sent when the task has been started in {@link WorkerService}.
  */
 @Immutable
 public class TaskStartedEvent implements TaskEvent {
+
+	private final LocalDateTime timestamp = LocalDateTime.now();
 
 	@Override public String toString() {
 		return toStringHelper(this).toString();
