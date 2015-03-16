@@ -60,7 +60,10 @@ task integrationTest(type: Test, dependsOn: 'test') {
     include "**/*IT.class"
     useTestNG() {
         includeGroups 'integration'
+        parallel 'instances'
+        threadCount 1
     }
+    forkEvery 1
     reports.html.destination = file("${reportsDir}/integration")
     reports.junitXml.destination = file("${buildDir}/integration-results")
 }
@@ -100,7 +103,7 @@ allprojects {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = "2.2.1"
+    gradleVersion = "2.3"
 }
 
 task console(dependsOn: 'classes') << {
