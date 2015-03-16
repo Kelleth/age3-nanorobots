@@ -3,3 +3,4 @@ Authors ordered by first contribution.
 Łukasz Faber <faber@agh.edu.pl>
 Kamil Piętak <kpietak@agh.edu.pl>
 Marek Kisiel-Dorohinicki <doroh@agh.edu.pl>
+Grzegorz Kaczmarczyk <grzegorz.kaczmarczyk@mail.com>

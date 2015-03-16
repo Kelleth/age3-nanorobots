@@ -51,6 +51,7 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
@@ -121,6 +122,11 @@ public final class ComputationCommand extends BaseCommand {
 
 			final SingleClassConfiguration configuration = new SingleClassConfiguration(classToLoad);
 			workerConfigurationMap.put(DefaultWorkerService.ConfigurationKey.CONFIGURATION, configuration);
+			try {
+				TimeUnit.SECONDS.sleep(1L);
+			} catch (final InterruptedException e) {
+				log.debug("Interrupted.", e);
+			}
 			workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.LOAD_CONFIGURATION));
 		} else if (nonNull(configToLoad)) {
 			log.debug("Loading config from {}.", configToLoad);
@@ -130,6 +136,11 @@ public final class ComputationCommand extends BaseCommand {
 				workerConfigurationMap.put(DefaultWorkerService.ConfigurationKey.CONFIGURATION, configuration);
 			} catch (final FileNotFoundException ignored) {
 				printWriter.println("File " + configToLoad + " does not exist.");
+			}
+			try {
+				TimeUnit.SECONDS.sleep(1L);
+			} catch (final InterruptedException e) {
+				log.debug("Interrupted.", e);
 			}
 			workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.LOAD_CONFIGURATION));
 		} else {

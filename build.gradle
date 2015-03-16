@@ -1,4 +1,5 @@
 apply plugin: 'java'
+apply plugin: 'groovy'
 apply plugin: 'idea'
 apply plugin: 'eclipse'
 apply plugin: 'application'
@@ -44,6 +45,8 @@ dependencies {
     compile 'jline:jline:+'
     compile 'org.jgrapht:jgrapht-core:+'
     compile 'com.beust:jcommander:+'
+    compile 'org.javassist:javassist:+'
+    compile 'org.codehaus.groovy:groovy:+'
 
     runtime 'org.codehaus.groovy:groovy-all:+'
 
