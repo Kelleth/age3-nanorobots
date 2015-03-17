@@ -1,2 +1,4 @@
 rootProject.name = 'age3'
 
+include 'agent-platform'
+

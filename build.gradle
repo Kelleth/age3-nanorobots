@@ -1,33 +1,98 @@
-apply plugin: 'java'
-apply plugin: 'groovy'
-apply plugin: 'idea'
-apply plugin: 'eclipse'
 apply plugin: 'application'
 apply plugin: 'maven-publish'
 
-group = 'org.age'
-sourceCompatibility = 1.8
-version = '0.2-SNAPSHOT'
-
 mainClassName = 'org.age.node.Bootstrapper'
 
-repositories {
-    mavenCentral()
-}
+allprojects {
+    apply plugin: 'java'
+    apply plugin: 'idea'
+    apply plugin: 'eclipse'
 
-configurations {
-    all*.exclude group: 'commons-logging', module: 'commons-logging'
-    markdownDoclet
+    configurations {
+        all*.exclude group: 'commons-logging', module: 'commons-logging'
+        markdownDoclet
+    }
+
+    group = 'org.age'
+    sourceCompatibility = 1.8
+    version = '0.2-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        testCompile 'org.testng:testng:+'
+        testCompile 'org.mockito:mockito-all:+'
+        testCompile 'org.uncommons:reportng:+'
+        testCompile 'com.google.inject:guice:+'
+        testCompile 'org.assertj:assertj-core:+'
+        testCompile 'org.assertj:assertj-guava:+'
+
+        runtime 'org.codehaus.groovy:groovy-all:+'
+
+        markdownDoclet 'ch.raffael.pegdown-doclet:pegdown-doclet:+'
+    }
+
+    tasks.withType(JavaCompile).all { JavaCompile compile ->
+        if (System.getenv('CHECKER_FRAMEWORK')) {
+            compile.options.debug = true
+            compile.options.compilerArgs = [
+                    '-version',
+                    '-implicit:class',
+                    '-processor', 'org.checkerframework.checker.nullness.NullnessChecker',
+                    '-AassumeAssertionsAreEnabled'
+            ]
+            options.fork = true
+            options.forkOptions.executable = System.getenv('CHECKER_FRAMEWORK') + "/checker/bin/javac"
+        }
+    }
+
+    test {
+        useTestNG() {
+            excludeGroups 'integration'
+        }
+    }
+
+    task integrationTest(type: Test, dependsOn: 'test') {
+        include "**/*IT.class"
+        useTestNG() {
+            includeGroups 'integration'
+            parallel 'instances'
+            threadCount 1
+        }
+        forkEvery 1
+        reports.html.destination = file("${reportsDir}/integration")
+        reports.junitXml.destination = file("${buildDir}/integration-results")
+    }
+
+    tasks.withType(Test) {
+        scanForTestClasses = false
+        enableAssertions = true
+//    testLogging.showStandardStreams = true
+        include "**/*Test.class"
+        options {
+            listeners << 'org.uncommons.reportng.HTMLReporter'
+            listeners << 'org.uncommons.reportng.JUnitXMLReporter'
+        }
+        ext.useDefaultListeners = true
+    }
+
+    javadoc.options {
+        docletpath = configurations.markdownDoclet.files.asType(List)
+        doclet = "ch.raffael.doclets.pegdown.PegdownDoclet"
+        addStringOption("parse-timeout", "10")
+    }
+
+    idea {
+        module {
+            downloadJavadoc = true
+            downloadSources = true
+        }
+    }
 }
 
 dependencies {
-    testCompile 'org.testng:testng:+'
-    testCompile 'org.mockito:mockito-all:+'
-    testCompile 'org.uncommons:reportng:+'
-    testCompile 'com.google.inject:guice:+'
-    testCompile 'org.assertj:assertj-core:+'
-    testCompile 'org.assertj:assertj-guava:+'
-
     compile 'javax.inject:javax.inject:1'
     compile 'org.springframework:spring-context:+'
     compile 'org.springframework:spring-test:+'
@@ -45,64 +110,6 @@ dependencies {
     compile 'jline:jline:+'
     compile 'org.jgrapht:jgrapht-core:+'
     compile 'com.beust:jcommander:+'
-    compile 'org.javassist:javassist:+'
-    compile 'org.codehaus.groovy:groovy:+'
-
-    runtime 'org.codehaus.groovy:groovy-all:+'
-
-    markdownDoclet 'ch.raffael.pegdown-doclet:pegdown-doclet:+'
-}
-
-test {
-    useTestNG() {
-        excludeGroups 'integration'
-    }
-}
-
-task integrationTest(type: Test, dependsOn: 'test') {
-    include "**/*IT.class"
-    useTestNG() {
-        includeGroups 'integration'
-        parallel 'instances'
-        threadCount 1
-    }
-    forkEvery 1
-    reports.html.destination = file("${reportsDir}/integration")
-    reports.junitXml.destination = file("${buildDir}/integration-results")
-}
-
-tasks.withType(Test) {
-    scanForTestClasses = false
-    enableAssertions = true
-//    testLogging.showStandardStreams = true
-    include "**/*Test.class"
-    options {
-        listeners << 'org.uncommons.reportng.HTMLReporter'
-        listeners << 'org.uncommons.reportng.JUnitXMLReporter'
-    }
-    ext.useDefaultListeners = true
-}
-
-//allprojects {
-//    tasks.withType(JavaCompile) {
-//        options.incremental = true
-//    }
-//}
-
-allprojects {
-    tasks.withType(JavaCompile).all { JavaCompile compile ->
-        if (System.getenv('CHECKER_FRAMEWORK')) {
-            compile.options.debug = true
-            compile.options.compilerArgs = [
-                    '-version',
-                    '-implicit:class',
-                    '-processor', 'org.checkerframework.checker.nullness.NullnessChecker',
-                    '-AassumeAssertionsAreEnabled'
-            ]
-            options.fork = true
-            options.forkOptions.executable = System.getenv('CHECKER_FRAMEWORK') + "/checker/bin/javac"
-        }
-    }
 }
 
 task wrapper(type: Wrapper) {
@@ -164,13 +171,6 @@ task standalone(dependsOn: 'classes') << {
     }
 }
 
-idea {
-    module {
-        downloadJavadoc = true
-        downloadSources = true
-    }
-}
-
 task sourcesJar(type: Jar, dependsOn: classes) {
     classifier = 'sources'
     from sourceSets.main.allSource
@@ -212,8 +212,3 @@ publishing {
     }
 }
 
-javadoc.options {
-    docletpath = configurations.markdownDoclet.files.asType(List)
-    doclet = "ch.raffael.doclets.pegdown.PegdownDoclet"
-    addStringOption("parse-timeout", "10")
-}

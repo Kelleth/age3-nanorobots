@@ -1,0 +1,9 @@
+apply plugin: 'groovy'
+apply plugin: 'application'
+apply plugin: 'maven-publish'
+
+dependencies {
+    compile project(':')
+    compile 'org.javassist:javassist:+'
+    compile 'org.codehaus.groovy:groovy:+'
+}
