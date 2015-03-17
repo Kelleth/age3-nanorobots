@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 /**
  * Main class for running agents platform
  */
-public class Platform {
+public class Platform implements Runnable {
 
 	private static final Logger log = LoggerFactory.getLogger(Platform.class);
 
@@ -67,10 +67,14 @@ public class Platform {
 		return builder.build();
 	}
 
-	public void run() throws InterruptedException {
+	@Override public void run() {
 		final List<Thread> threads = createThreadsForWorkplaces();
 		waitUntilStopConditionReached();
-		stopWorkplaces(threads);
+		try {
+			stopWorkplaces(threads);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private List<Thread> createThreadsForWorkplaces() {

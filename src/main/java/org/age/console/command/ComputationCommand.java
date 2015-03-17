@@ -33,6 +33,7 @@ import org.age.services.lifecycle.internal.DefaultNodeLifecycleService;
 import org.age.services.worker.WorkerMessage;
 import org.age.services.worker.internal.DefaultWorkerService;
 import org.age.services.worker.internal.SingleClassConfiguration;
+import org.age.services.worker.internal.SpringClasspathConfiguration;
 import org.age.services.worker.internal.SpringConfiguration;
 
 import com.beust.jcommander.Parameter;
@@ -93,6 +94,8 @@ public final class ComputationCommand extends BaseCommand {
 
 	@Parameter(names = "--config") private String configToLoad;
 
+	@Parameter(names = "--classpath") private String classpathToLoad;
+
 	private @MonotonicNonNull ITopic<LifecycleMessage> lifecycleTopic;
 
 	private @MonotonicNonNull ITopic<WorkerMessage<?>> workerTopic;
@@ -134,15 +137,24 @@ public final class ComputationCommand extends BaseCommand {
 			try {
 				final SpringConfiguration configuration = new SpringConfiguration(configToLoad);
 				workerConfigurationMap.put(DefaultWorkerService.ConfigurationKey.CONFIGURATION, configuration);
+				TimeUnit.SECONDS.sleep(1L);
+				workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.LOAD_CONFIGURATION));
 			} catch (final FileNotFoundException ignored) {
 				printWriter.println("File " + configToLoad + " does not exist.");
-			}
-			try {
-				TimeUnit.SECONDS.sleep(1L);
 			} catch (final InterruptedException e) {
 				log.debug("Interrupted.", e);
 			}
-			workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.LOAD_CONFIGURATION));
+		} else if (nonNull(classpathToLoad)) {
+			log.debug("Loading config from {}.", classpathToLoad);
+
+			try {
+				final SpringClasspathConfiguration configuration = new SpringClasspathConfiguration(classpathToLoad);
+				workerConfigurationMap.put(DefaultWorkerService.ConfigurationKey.CONFIGURATION, configuration);
+				TimeUnit.SECONDS.sleep(1L);
+				workerTopic.publish(WorkerMessage.createBroadcastWithoutPayload(WorkerMessage.Type.LOAD_CONFIGURATION));
+			} catch (final InterruptedException e) {
+				log.debug("Interrupted.", e);
+			}
 		} else {
 			printWriter.println("No class or config to load.");
 		}

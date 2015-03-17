@@ -7,3 +7,34 @@ dependencies {
     compile 'org.javassist:javassist:+'
     compile 'org.codehaus.groovy:groovy:+'
 }
+
+task console(dependsOn: 'classes') << {
+    def classpath = sourceSets.main.runtimeClasspath + configurations.runtime
+
+    def command = [
+            'java',
+            '-enableassertions',
+            '-cp', classpath.collect().join(System.getProperty('path.separator')),
+            '-Dlogback.configurationFile=org/age/console/logback.groovy',
+            'org.age.console.ConsoleBootstrapper',
+    ]
+
+    def proc = new ProcessBuilder(command)
+            .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+            .redirectInput(ProcessBuilder.Redirect.INHERIT)
+            .redirectError(ProcessBuilder.Redirect.INHERIT)
+            .start()
+
+    proc.waitFor()
+
+    if (0 != proc.exitValue()) {
+        throw new RuntimeException("console exited with status: ${proc.exitValue()}")
+    }
+}
+
+task node(type: JavaExec) {
+    main = 'org.age.node.Bootstrapper'
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs '-enableassertions'
+    systemProperty "logback.configurationFile", "org/age/node/logback.groovy"
+}
