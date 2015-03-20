@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Agent descriptor contains the configuration of an agent.
+ */
 public interface AgentDescriptor {
 
 	Class<? extends AgentBehavior> agentClass();

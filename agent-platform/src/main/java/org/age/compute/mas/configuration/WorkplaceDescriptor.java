@@ -23,6 +23,9 @@ import org.age.compute.mas.action.Action;
 
 import java.util.List;
 
+/**
+ * Workplace descriptor contains the configuration of a workplace.
+ */
 public interface WorkplaceDescriptor {
 
 	List<AgentDescriptor> agents();

@@ -17,19 +17,11 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.compute.mas.exception;
+/*
+ * Created: 2015-03-17.
+ */
 
-public final class AgentInstantiationException extends RuntimeException {
-
-	public AgentInstantiationException(final String message) {
-		super(message);
-	}
-
-	public AgentInstantiationException(final String message, final Throwable cause) {
-		super(message, cause);
-	}
-
-	public AgentInstantiationException(final Throwable cause) {
-		super(cause);
-	}
-}
+/**
+ * Multi-agent System (MAS) usage example.
+ */
+package org.age.example.mas;

@@ -31,7 +31,7 @@ import java.io.StringReader;
 
 import groovy.lang.GroovyShell;
 
-public class ConfigurationLoader {
+public final class ConfigurationLoader {
 
 	public static Configuration load(final Reader configuration) {
 		return measureTime(() -> {

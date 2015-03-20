@@ -21,11 +21,17 @@ package org.age.compute.mas.action;
 
 import org.age.compute.mas.agent.Agent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Collection;
 
 public abstract class DeathAction implements Action {
 
-	@Override public void execute(final Agent<?> parent, final Collection<Agent<?>> agents) {
+	private static final Logger log = LoggerFactory.getLogger(DeathAction.class);
+
+	@Override public final void execute(final Agent<?> parent, final Collection<Agent<?>> agents) {
+		log.debug("Removing agents from {}.", parent);
 		agents.stream().filter(this::shouldDie).forEach(parent::removeChild);
 	}
 

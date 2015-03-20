@@ -25,9 +25,12 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-public class ReflectionUtils {
+public final class ReflectionUtils {
 
-	public static Collection<Method> allMethodsAnnotatedBy(final Class<?> clazz, final Class<? extends Annotation> annotation) {
+	private ReflectionUtils() {}
+
+	public static Collection<Method> allMethodsAnnotatedBy(final Class<?> clazz,
+	                                                       final Class<? extends Annotation> annotation) {
 		final Set<Method> methods = new LinkedHashSet<>();
 		for (final Method method : clazz.getMethods()) {
 			if (method.getAnnotation(annotation) != null) { methods.add(method); }

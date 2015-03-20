@@ -28,7 +28,7 @@ class InfiniteStopCondition implements StopCondition {
 
     @Override
     boolean isReached() {
-        logger.warn("Using infinte stop condition!")
+        logger.warn("Using infinite stop condition!")
         return false
     }
 

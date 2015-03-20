@@ -21,11 +21,10 @@ package org.age.compute.mas;
 
 import org.age.compute.mas.agent.Agent;
 
-public class Assertions extends org.assertj.core.api.Assertions {
+public final class Assertions {
 
 	public static AgentAssert assertThat(Agent<?> actual) {
 		return AgentAssert.assertThat(actual);
 	}
-
 
 }

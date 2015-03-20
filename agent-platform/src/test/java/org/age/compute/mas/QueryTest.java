@@ -32,7 +32,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 
-public class QueryTest {
+public final class QueryTest {
 
 	static class AgentWithMagicNumber extends AgentBehavior {
 
@@ -40,11 +40,11 @@ public class QueryTest {
 
 		private Iterator<Integer> sequence = Collections.<Integer>emptyList().iterator();
 
-		@Override public void doStep(int stepNumber) {
+		@Override public void doStep(final int stepNumber) {
 			if (sequence.hasNext()) { magicNumber = sequence.next(); }
 		}
 
-		public void setMagicNumberSequence(Integer... sequence) {
+		public void setMagicNumberSequence(final Integer... sequence) {
 			this.sequence = Arrays.asList(sequence).iterator();
 		}
 
@@ -57,7 +57,7 @@ public class QueryTest {
 
 		private AgentWithMagicNumber agentWithGreatestNumber;
 
-		@Override public void doStep(int stepNumber) {
+		@Override public void doStep(final int stepNumber) {
 			agentWithGreatestNumber = query(AgentWithMagicNumber.class).max(
 					(a1, a2) -> a1.getMagicNumber() - a2.getMagicNumber()).get();
 		}
@@ -68,24 +68,24 @@ public class QueryTest {
 	}
 
 	@Test public void querying_shuld_work_in_basic_case() {
-		Workplace workplace = new Workplace("", Collections.emptyList());
+		final Workplace workplace = new Workplace("", Collections.emptyList());
 
-		Agent<AgentWithMagicNumber> agent1 = AgentBuilder.create(AgentWithMagicNumber.class);
+		final Agent<AgentWithMagicNumber> agent1 = AgentBuilder.create(AgentWithMagicNumber.class).build();
 		agent1.behavior().setMagicNumberSequence(1, 2, 3);
 		workplace.addChild(agent1);
 		agent1.setParent(workplace);
 
-		Agent<AgentWithMagicNumber> agent2 = AgentBuilder.create(AgentWithMagicNumber.class);
+		final Agent<AgentWithMagicNumber> agent2 = AgentBuilder.create(AgentWithMagicNumber.class).build();
 		agent2.behavior().setMagicNumberSequence(10, 20, 1);
 		workplace.addChild(agent2);
 		agent2.setParent(workplace);
 
-		Agent<AgentWithMagicNumber> agent3 = AgentBuilder.create(AgentWithMagicNumber.class);
+		final Agent<AgentWithMagicNumber> agent3 = AgentBuilder.create(AgentWithMagicNumber.class).build();
 		agent3.behavior().setMagicNumberSequence(100, 0, 0);
 		workplace.addChild(agent3);
 		agent3.setParent(workplace);
 
-		Agent<QueryingAgent> agent4 = AgentBuilder.create(QueryingAgent.class);
+		final Agent<QueryingAgent> agent4 = AgentBuilder.create(QueryingAgent.class).build();
 		workplace.addChild(agent4);
 		agent4.setParent(workplace);
 

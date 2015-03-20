@@ -19,103 +19,96 @@
 
 package org.age.compute.mas.agent;
 
+import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Maps.newHashMap;
+import static java.util.Objects.requireNonNull;
 import static org.age.compute.mas.misc.ReflectionUtils.allMethodsAnnotatedBy;
 
 import org.age.compute.mas.InternalAgentRepresentationProxyMethodHandler;
 import org.age.compute.mas.action.Action;
 import org.age.compute.mas.agent.internal.InternalAgentRepresentation;
-import org.age.compute.mas.exception.AgentInstantiationException;
 import org.age.compute.mas.message.MessageHandler;
+
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.lang.reflect.Method;
 import java.text.MessageFormat;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import javassist.util.proxy.ProxyFactory;
 import javassist.util.proxy.ProxyObject;
 
-public class AgentBuilder {
+public final class AgentBuilder<A extends AgentBehavior> {
 
-	public static <A extends AgentBehavior> Builder<A> builder(final Class<A> agentClass) {
-		return new Builder<>(agentClass);
+	private final Class<A> agentClass;
+
+	private final Map<String, Object> settings = newHashMap();
+
+	private final List<Class<Action>> actions = newArrayList();
+
+	private @Nullable Agent<?> parent;
+
+	private @Nullable String name;
+
+	private AgentBuilder(final Class<A> agentClass) {
+		this.agentClass = requireNonNull(agentClass);
 	}
 
-	public static <A extends AgentBehavior> Builder<A> baseOn(final Agent<A> existingAgent) {
-		return baseOn(existingAgent.behavior());
+	public static <A extends AgentBehavior> AgentBuilder<A> create(final Class<A> agentClass) {
+		return new AgentBuilder<>(requireNonNull(agentClass));
 	}
 
-	@SuppressWarnings("unchecked") public static <A extends AgentBehavior> Builder<A> baseOn(final A existingAgent) {
-		final InternalAgentRepresentation internalAgentRepresentation = (InternalAgentRepresentation)existingAgent;
-		return (Builder<A>)builder(internalAgentRepresentation.behaviorClass()).withActions(
-				internalAgentRepresentation.actionsTypes()).withParent(internalAgentRepresentation.getParent())
-		                                                                          .withSettings(
-				                                                                          internalAgentRepresentation.settings());
+	public static <A extends AgentBehavior> AgentBuilder<A> baseOn(final Agent<A> existingAgent) {
+		return baseOn(requireNonNull(existingAgent).behavior());
 	}
 
-	public static class Builder<A extends AgentBehavior> {
-
-		private final Class<A> agentClass;
-
-		private Map<String, Object> settings = Collections.emptyMap();
-
-		private List<Class<Action>> actions = Collections.emptyList();
-
-		private Agent<?> parent;
-
-		private String name;
-
-		public Builder(final Class<A> agentClass) {
-			this.agentClass = agentClass;
-		}
-
-		public Builder<A> withSettings(final Map<String, Object> settings) {
-			this.settings = settings;
-			return this;
-		}
-
-		public Builder<A> withActions(final List<Class<Action>> actions) {
-			this.actions = actions;
-			return this;
-		}
-
-		public Builder<A> withParent(final Agent<?> parent) {
-			this.parent = parent;
-			return this;
-		}
-
-		public Builder<A> withName(final String name) {
-			this.name = name;
-			return this;
-		}
-
-		public Agent<A> build() {
-			return AgentBuilder.create(agentClass, settings, actions, parent, name);
-		}
+	@SuppressWarnings("unchecked")
+	public static <A extends AgentBehavior> AgentBuilder<A> baseOn(final A existingAgent) {
+		final InternalAgentRepresentation internalAgentRepresentation = (InternalAgentRepresentation)requireNonNull(
+				existingAgent);
+		// @formatter:off
+		return (AgentBuilder<A>)create(internalAgentRepresentation.behaviorClass())
+				.withActions(internalAgentRepresentation.actionsTypes())
+				.withParent(internalAgentRepresentation.getParent())
+				.withSettings(internalAgentRepresentation.settings());
+		// @formatter:on
 	}
 
-	@Deprecated public static <A extends AgentBehavior> Agent<A> create(final Class<A> agentClass) {
-		return create(agentClass, Collections.emptyMap(), Collections.emptyList(), null, null);
+	public AgentBuilder<A> withSettings(final Map<String, Object> settings) {
+		this.settings.putAll(requireNonNull(settings));
+		return this;
 	}
 
-	private static <A extends AgentBehavior> Agent<A> create(final Class<? extends AgentBehavior> agentClass,
-	                                                         final Map<String, Object> settings, final List<Class<Action>> actions,
-	                                                         final Agent<?> parent, final String name) {
-		final InternalAgentRepresentationImpl enhancedAgent = new InternalAgentRepresentationImpl(actions, settings, parent,
-		                                                                                    name);
+	public AgentBuilder<A> withParent(final Agent<?> parent) {
+		this.parent = parent;
+		return this;
+	}
+
+	public AgentBuilder<A> withActions(final List<Class<Action>> actions) {
+		this.actions.addAll(requireNonNull(actions));
+		return this;
+	}
+
+	public AgentBuilder<A> withName(final String name) {
+		this.name = name;
+		return this;
+	}
+
+	@SuppressWarnings("unchecked") public Agent<A> build() {
+		final InternalAgentRepresentationImpl internalAgent = new InternalAgentRepresentationImpl(actions, settings,
+		                                                                                          parent, name);
 
 		try {
 			verifyClassCorrectness(agentClass);
-			final Class clazz = prepareClassForThisAgent(agentClass);
-			final Object instance = clazz.newInstance();
-			((ProxyObject)instance).setHandler(new InternalAgentRepresentationProxyMethodHandler(enhancedAgent));
+			final Class<?> clazz = prepareClassForThisAgent(agentClass);
+			final Object proxy = clazz.getConstructor().newInstance();
+			((ProxyObject)proxy).setHandler(new InternalAgentRepresentationProxyMethodHandler(internalAgent));
 
-			@SuppressWarnings("unchecked") final A behavior = (A)instance;
-			enhancedAgent.setSelf(behavior);
+			final A behavior = (A)proxy;
+			internalAgent.setSelf(behavior);
 
-			@SuppressWarnings("unchecked") final Agent<A> agent = (Agent<A>)instance;
-			return agent;
+			return (Agent<A>)proxy;
 		} catch (final Throwable e) {
 			throw new AgentInstantiationException(e);
 		}
@@ -123,6 +116,13 @@ public class AgentBuilder {
 
 	private static <A extends AgentBehavior> void verifyClassCorrectness(final Class<A> agentClass) {
 		verifyMessageHandlers(agentClass);
+	}
+
+	private static <A extends AgentBehavior> Class<?> prepareClassForThisAgent(final Class<A> agentClass) {
+		final ProxyFactory factory = new ProxyFactory();
+		factory.setSuperclass(agentClass);
+		factory.setInterfaces(new Class[] {InternalAgentRepresentation.class});
+		return factory.createClass();
 	}
 
 	private static <A extends AgentBehavior> void verifyMessageHandlers(final Class<A> agentClass) {
@@ -133,13 +133,6 @@ public class AgentBuilder {
 						                     declaredHandler.getName(), declaredHandler.getDeclaringClass().getName()));
 			}
 		}
-	}
-
-	private static <A extends AgentBehavior> Class prepareClassForThisAgent(final Class<A> agentClass) {
-		final ProxyFactory factory = new ProxyFactory();
-		factory.setSuperclass(agentClass);
-		factory.setInterfaces(new Class[] {InternalAgentRepresentation.class});
-		return factory.createClass();
 	}
 
 }

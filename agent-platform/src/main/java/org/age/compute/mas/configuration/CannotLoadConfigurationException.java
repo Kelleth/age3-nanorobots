@@ -17,7 +17,7 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.compute.mas.exception;
+package org.age.compute.mas.configuration;
 
 public final class CannotLoadConfigurationException extends RuntimeException {
 

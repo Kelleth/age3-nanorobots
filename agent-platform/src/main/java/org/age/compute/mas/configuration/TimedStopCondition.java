@@ -19,13 +19,17 @@
 
 package org.age.compute.mas.configuration;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-public class TimedStopCondition implements StopCondition {
+public final class TimedStopCondition implements StopCondition {
 
 	private static final Logger log = LoggerFactory.getLogger(TimedStopCondition.class);
 
@@ -34,6 +38,8 @@ public class TimedStopCondition implements StopCondition {
 	private final LocalDateTime startedAt = LocalDateTime.now();
 
 	public TimedStopCondition(final Duration desiredDuration) {
+		requireNonNull(desiredDuration);
+		checkArgument(desiredDuration.getSeconds() > 0L, "Duration cannot be shorter than 1 second.");
 		this.desiredDuration = desiredDuration;
 	}
 
@@ -43,5 +49,9 @@ public class TimedStopCondition implements StopCondition {
 			return true;
 		}
 		return false;
+	}
+
+	@Override public String toString() {
+		return toStringHelper(this).add("startedAt", startedAt).add("duration", desiredDuration).toString();
 	}
 }

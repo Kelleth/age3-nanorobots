@@ -37,10 +37,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class PlatformTest {
+public final class PlatformTest {
 
 	public static class DummyAgent extends AgentBehavior {
-		@Override public void doStep(int stepNumber) {
+		@Override public void doStep(final int stepNumber) {
 		}
 	}
 
@@ -52,7 +52,7 @@ public class PlatformTest {
 
 		private List<AgentDescriptor> children = Collections.emptyList();
 
-		public SimpleDescriptor(String name) {
+		public SimpleDescriptor(final String name) {
 			this.name = name;
 		}
 
@@ -80,17 +80,17 @@ public class PlatformTest {
 			return Collections.emptyList();
 		}
 
-		public void setParent(AgentDescriptor parent) {
+		public void setParent(final AgentDescriptor parent) {
 			this.parent = Optional.ofNullable(parent);
 		}
 
-		public void setChildren(List<AgentDescriptor> children) {
+		public void setChildren(final List<AgentDescriptor> children) {
 			this.children = children;
 		}
 	}
 
 	@Test public void should_instantiate_agents_correctly() {
-		Platform platform = new Platform(new Configuration() {
+		final Platform platform = new Platform(new Configuration() {
 
 			/*
 			simple hierarchy:
@@ -103,13 +103,13 @@ public class PlatformTest {
 			@Override public List<WorkplaceDescriptor> workplaces() {
 				return Collections.singletonList(new WorkplaceDescriptor() {
 					@Override public List<AgentDescriptor> agents() {
-						SimpleDescriptor root = new SimpleDescriptor("root");
-						SimpleDescriptor a = new SimpleDescriptor("a");
-						SimpleDescriptor b = new SimpleDescriptor("b");
-						SimpleDescriptor a1 = new SimpleDescriptor("a1");
-						SimpleDescriptor a2 = new SimpleDescriptor("a2");
-						SimpleDescriptor b1 = new SimpleDescriptor("b1");
-						SimpleDescriptor b2 = new SimpleDescriptor("b2");
+						final SimpleDescriptor root = new SimpleDescriptor("root");
+						final SimpleDescriptor a = new SimpleDescriptor("a");
+						final SimpleDescriptor b = new SimpleDescriptor("b");
+						final SimpleDescriptor a1 = new SimpleDescriptor("a1");
+						final SimpleDescriptor a2 = new SimpleDescriptor("a2");
+						final SimpleDescriptor b1 = new SimpleDescriptor("b1");
+						final SimpleDescriptor b2 = new SimpleDescriptor("b2");
 
 						root.setChildren(asList(a, b));
 						a.setParent(root);
@@ -137,29 +137,29 @@ public class PlatformTest {
 			}
 		});
 
-		List<Agent<?>> agents = platform.getWorkplaces().get(0).children();
+		final List<Agent<?>> agents = platform.workplaces().get(0).children();
 		Assertions.assertThat(agents).hasSize(1);
 
-		Agent<?> root = agents.get(0);
+		final Agent<?> root = agents.get(0);
 
 		AgentAssert.assertThat(root).hasName("root").numberOfChildrenEquals(2);
 
-		Agent<?> a = root.children().get(0);
+		final Agent<?> a = root.children().get(0);
 		AgentAssert.assertThat(a).hasName("a").numberOfChildrenEquals(2);
 
-		Agent<?> a1 = a.children().get(0);
+		final Agent<?> a1 = a.children().get(0);
 		AgentAssert.assertThat(a1).hasName("a1").numberOfChildrenEquals(0);
 
-		Agent<?> a2 = a.children().get(1);
+		final Agent<?> a2 = a.children().get(1);
 		AgentAssert.assertThat(a2).hasName("a2").numberOfChildrenEquals(0);
 
-		Agent<?> b = root.children().get(1);
+		final Agent<?> b = root.children().get(1);
 		AgentAssert.assertThat(b).hasName("b").numberOfChildrenEquals(2);
 
-		Agent<?> b1 = b.children().get(0);
+		final Agent<?> b1 = b.children().get(0);
 		AgentAssert.assertThat(b1).hasName("b1").numberOfChildrenEquals(0);
 
-		Agent<?> b2 = b.children().get(1);
+		final Agent<?> b2 = b.children().get(1);
 		AgentAssert.assertThat(b2).hasName("b2").numberOfChildrenEquals(0);
 	}
 

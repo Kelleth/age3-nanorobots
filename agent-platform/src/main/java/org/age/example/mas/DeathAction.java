@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Intelligent Information Systems Group.
+ * Copyright (C) 2014-2015 Intelligent Information Systems Group.
  *
  * This file is part of AgE.
  *
@@ -19,22 +19,25 @@
 
 package org.age.example.mas;
 
+import static java.util.Objects.nonNull;
+
 import org.age.compute.mas.agent.Agent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DeathAction extends org.age.compute.mas.action.DeathAction {
+public final class DeathAction extends org.age.compute.mas.action.DeathAction {
 
 	private static final Logger logger = LoggerFactory.getLogger(DeathAction.class);
 
-	@Override @SuppressWarnings("unchecked") protected boolean shouldDie(Agent<?> agent) {
+	@Override @SuppressWarnings("unchecked") protected boolean shouldDie(final Agent<?> agent) {
+		assert nonNull(agent);
 		return DummyAgent.class.isAssignableFrom(agent.behaviorClass()) && checkEnergy((Agent<DummyAgent>)agent);
 	}
 
-	private boolean checkEnergy(Agent<DummyAgent> agent) {
+	private static boolean checkEnergy(final Agent<DummyAgent> agent) {
 		if (agent.behavior().getEnergy() == 0) {
-			logger.debug("Agent: " + agent.name() + " is about to die");
+			logger.debug("Agent: {} is about to die.", agent);
 			return true;
 		}
 		return false;

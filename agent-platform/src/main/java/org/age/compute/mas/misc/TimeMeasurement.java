@@ -19,6 +19,8 @@
 
 package org.age.compute.mas.misc;
 
+import static java.util.Objects.requireNonNull;
+
 import com.google.common.base.Stopwatch;
 
 import org.slf4j.Logger;
@@ -27,17 +29,21 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-public class TimeMeasurement {
+public final class TimeMeasurement {
 
 	private static final Logger log = LoggerFactory.getLogger(TimeMeasurement.class);
 
+	private TimeMeasurement() {}
+
 	public static <T> T measureTime(final Supplier<T> func, final String messageToLog) {
+		requireNonNull(func);
+		requireNonNull(messageToLog);
+
 		final Stopwatch stopwatch = Stopwatch.createStarted();
 		try {
 			return func.get();
 		} finally {
-			log.debug(
-					String.format("%s %.2fs", messageToLog, (double)stopwatch.elapsed(TimeUnit.MILLISECONDS) / 1000));
+			log.debug(String.format("%s %.2fs", messageToLog, (double)stopwatch.elapsed(TimeUnit.MILLISECONDS) / 1000));
 		}
 	}
 }

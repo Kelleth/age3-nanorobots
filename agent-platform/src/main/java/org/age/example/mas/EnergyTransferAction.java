@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Intelligent Information Systems Group.
+ * Copyright (C) 2014-2015 Intelligent Information Systems Group.
  *
  * This file is part of AgE.
  *
@@ -30,22 +30,22 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.Random;
 
-public class EnergyTransferAction implements Action {
+public final class EnergyTransferAction implements Action {
 
 	private static final Logger logger = LoggerFactory.getLogger(EnergyTransferAction.class);
 
-	@Override public void execute(Agent<?> parent, Collection<Agent<?>> agents) {
-		@SuppressWarnings("unchecked") Collection<Agent<DummyAgent>> castedAgents = (Collection)agents;
+	@Override public void execute(final Agent<?> parent, final Collection<Agent<?>> agents) {
+		@SuppressWarnings("unchecked") final Collection<Agent<DummyAgent>> castedAgents = (Collection)agents;
 
-		for (Agent<DummyAgent> agent : castedAgents) {
-			Agent<DummyAgent> randomAgent = pickDifferentThan(castedAgents, agent);
+		for (final Agent<DummyAgent> agent : castedAgents) {
+			final Agent<DummyAgent> randomAgent = pickDifferentThan(castedAgents, agent);
 			if (new Random().nextInt(2) == 0) {
 				executeForSingleAgent(agent, randomAgent);
 			}
 		}
 	}
 
-	private <E> E pickDifferentThan(Collection<E> elements, E element) {
+	private <E> E pickDifferentThan(final Collection<E> elements, final E element) {
 		E randomAgent;
 		do {
 			randomAgent = pick(elements);
@@ -53,23 +53,22 @@ public class EnergyTransferAction implements Action {
 		return randomAgent;
 	}
 
-	private <E> E pick(Collection<E> elements) {
+	private <E> E pick(final Collection<E> elements) {
 		return Iterables.get(elements, new Random().nextInt(elements.size()));
 	}
 
-	private void executeForSingleAgent(Agent<DummyAgent> agent, Agent<DummyAgent> otherAgent) {
+	private void executeForSingleAgent(final Agent<DummyAgent> agent, final Agent<DummyAgent> otherAgent) {
 		if (agent.behavior().getEnergy() > otherAgent.behavior().getEnergy()) {
-			logger.info("Agent: " + agent.name() + " have more energy than: " + otherAgent.name());
+			logger.info("Agent: {} have more energy than: {}", agent.name(), otherAgent.name());
 
-			int otherAgentEnergy = otherAgent.behavior().getEnergy();
-			int amountOfEnergyToTransfer = new Random().nextInt((int)(0.8 * otherAgentEnergy) + 1);
+			final int otherAgentEnergy = otherAgent.behavior().getEnergy();
+			final int amountOfEnergyToTransfer = new Random().nextInt((int)(0.8 * otherAgentEnergy) + 1);
 
 			agent.behavior().setEnergy(agent.behavior().getEnergy() + amountOfEnergyToTransfer);
 			otherAgent.behavior().setEnergy(otherAgent.behavior().getEnergy() - amountOfEnergyToTransfer);
 
-			logger.info("Agent: " + agent.name() + " have now: " + agent.behavior().getEnergy() + " energy points");
-			logger.info("Agent: " + otherAgent.name() + " have now: " + otherAgent.behavior().getEnergy()
-			            + " energy points");
+			logger.info("Agent: {} have now: {} energy points", agent.name(), agent.behavior().getEnergy());
+			logger.info("Agent: {} have now: {} energy points", otherAgent.name(), otherAgent.behavior().getEnergy());
 		}
 	}
 

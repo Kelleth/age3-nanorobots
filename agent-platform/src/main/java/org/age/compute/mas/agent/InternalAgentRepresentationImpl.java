@@ -19,84 +19,104 @@
 
 package org.age.compute.mas.agent;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Lists.newLinkedList;
+import static com.google.common.collect.Maps.newHashMap;
+import static java.util.Objects.nonNull;
+import static java.util.Objects.requireNonNull;
+
 import org.age.compute.mas.action.Action;
 import org.age.compute.mas.agent.internal.InternalAgentRepresentation;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-class InternalAgentRepresentationImpl implements InternalAgentRepresentation {
+import android.annotation.Nullable;
+
+final class InternalAgentRepresentationImpl implements InternalAgentRepresentation {
 
 	private static final Logger log = LoggerFactory.getLogger(InternalAgentRepresentationImpl.class);
 
-	private final List<Agent<?>> children = new LinkedList<>();
+	private final List<Agent<?>> children = newArrayList();
 
 	private final String name;
 
-	private final Map<String, Object> settings;
+	private final Map<String, Object> settings = newHashMap();
 
 	private final List<Action> actions;
 
-	private Agent parent;
+	private @Nullable Agent<?> parent;
 
 	private AgentBehavior self;
 
-	private final List<Agent> agentsForRemovalAtTheEndOfTurn = new LinkedList<>();
+	private final List<Agent<?>> agentsForRemovalAtTheEndOfTurn = newLinkedList();
 
-	private final List<Class<Action>> actionsTypes;
+	private final List<Class<Action>> actionsTypes = newArrayList();
 
-	public InternalAgentRepresentationImpl(final List<Class<Action>> actionsTypes, final Map<String, Object> settings,
-	                                       final Agent<?> parent, final String name) {
-		this.actionsTypes = actionsTypes;
-		this.actions = actionsTypes.stream().map(AgentUtils::instantiateSafely).collect(Collectors.toList());
-		this.settings = settings;
+	InternalAgentRepresentationImpl(final List<Class<Action>> actionsTypes, final Map<String, Object> settings,
+	                                final @Nullable Agent<?> parent, final @Nullable String name) {
+		this.actionsTypes.addAll(requireNonNull(actionsTypes));
+		this.settings.putAll(settings);
 		this.parent = parent;
-		this.name = name != null ? name : AgentUtils.randomName();
+		this.name = (name != null) ? name : AgentUtils.randomName();
+
+		actions = actionsTypes.stream().map(AgentUtils::instantiateSafely).collect(Collectors.toList());
 	}
 
-	public void doStepOnChildren(final int stepNumber) {
+	@Override public void doStepOnChildren(final int stepNumber) {
+		log.debug("{} doing a step on children.", this);
 		children.forEach(child -> child.behavior().doStep(stepNumber));
 		executeActions();
 		removeAgents();
 	}
 
 	private void executeActions() {
+		log.debug("{} executing actions.", this);
 		actions.forEach(action -> action.execute(this, children));
 	}
 
 	private void removeAgents() {
+		log.debug("{} removing agents.", this);
 		agentsForRemovalAtTheEndOfTurn.forEach(children::remove);
 		agentsForRemovalAtTheEndOfTurn.clear();
 	}
 
 	@Override public void addChild(final Agent<?> child) {
-		children.add(child);
+		log.debug("{} adding a new child {}.", this, child);
+		children.add(requireNonNull(child));
 	}
 
 	@Override public void removeChild(final Agent<?> child) {
-		agentsForRemovalAtTheEndOfTurn.add(child);
+		log.debug("{} removing a child {}.", this, child);
+		agentsForRemovalAtTheEndOfTurn.add(requireNonNull(child));
 	}
 
 	@Override public void addChildren(final Collection<Agent<?>> children) {
-		this.children.addAll(children);
+		log.debug("{} adding new children {}.", this, children);
+		this.children.addAll(requireNonNull(children));
 	}
 
 	@Override public List<Agent<?>> children() {
-		return children;
+		return ImmutableList.copyOf(children);
 	}
 
 	@Override public void setParent(final Agent<?> parent) {
 		this.parent = parent;
 	}
 
-	@Override public Agent<?> getParent() {
+	// XXX: I do not like this "Nullable" here. Change to null-object?
+	@Override public @Nullable Agent<?> getParent() {
 		return parent;
 	}
 
@@ -105,33 +125,22 @@ class InternalAgentRepresentationImpl implements InternalAgentRepresentation {
 	}
 
 	@Override public Stream<AgentBehavior> query() {
-		return getParent().children().stream().map(a -> a.behavior());
+		return parent.children().stream().map(a -> a.behavior());
 	}
 
 	@Override public List<Class<Action>> actionsTypes() {
-		return actionsTypes;
+		return ImmutableList.copyOf(actionsTypes);
 	}
 
 	public Map<String, Object> settings() {
-		return settings;
-	}
-
-	@Override public boolean equals(final Object o) {
-		if (this == o) { return true; }
-		if (!(o instanceof InternalAgentRepresentation)) { return false; }
-		final InternalAgentRepresentationImpl that = (InternalAgentRepresentationImpl)o;
-		return name.equals(that.name);
-	}
-
-	@Override public int hashCode() {
-		return name.hashCode();
+		return ImmutableMap.copyOf(settings);
 	}
 
 	/**
 	 * Self is an proxy over Agent and EnhancedAgent
 	 */
 	public void setSelf(final AgentBehavior self) {
-		this.self = self;
+		this.self = requireNonNull(self);
 	}
 
 	@Override public AgentBehavior behavior() {
@@ -140,10 +149,28 @@ class InternalAgentRepresentationImpl implements InternalAgentRepresentation {
 
 	@SuppressWarnings("unchecked") @Override public Class<AgentBehavior> behaviorClass() {
 		Class clazz = self.getClass();
-		while (clazz != null && clazz.getName().contains("_$$_jvst")) {
+		while (nonNull(clazz) && clazz.getName().contains("_$$_jvst")) {
 			clazz = clazz.getSuperclass();
 		}
 		return clazz;
 	}
 
+	@Override public boolean equals(final Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof InternalAgentRepresentation)) {
+			return false;
+		}
+		final InternalAgentRepresentationImpl other = (InternalAgentRepresentationImpl)o;
+		return Objects.equals(name, other.name);
+	}
+
+	@Override public int hashCode() {
+		return name.hashCode();
+	}
+
+	@Override public String toString() {
+		return toStringHelper(this).addValue(name).addValue(behaviorClass()).toString();
+	}
 }

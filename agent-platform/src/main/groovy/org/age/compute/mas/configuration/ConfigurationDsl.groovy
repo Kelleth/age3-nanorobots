@@ -19,8 +19,6 @@
 
 package org.age.compute.mas.configuration
 
-import org.age.compute.mas.exception.CannotLoadConfigurationException
-
 import java.time.Duration
 
 /**

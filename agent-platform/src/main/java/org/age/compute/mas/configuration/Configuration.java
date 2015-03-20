@@ -21,10 +21,19 @@ package org.age.compute.mas.configuration;
 
 import java.util.List;
 
+/**
+ * Describes the Multi-agent System configuration.
+ */
 public interface Configuration {
 
+	/**
+	 * Returns the (non-null) list of workplaces.
+	 */
 	List<WorkplaceDescriptor> workplaces();
 
+	/**
+	 * Returns the (non-null) stop condition.
+	 */
 	StopCondition stopCondition();
 
 }

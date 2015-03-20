@@ -17,21 +17,11 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.example.mas;
+/*
+ * Created: 2015-03-17.
+ */
 
-import org.age.compute.mas.action.Action;
-import org.age.compute.mas.agent.Agent;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
-
-public final class WorkplaceStateCheckerAction implements Action {
-
-	private static final Logger logger = LoggerFactory.getLogger(WorkplaceStateCheckerAction.class);
-
-	@Override public void execute(final Agent<?> parent, final Collection<Agent<?>> agents) {
-		logger.info("We have {} agents currently", agents.size());
-	}
-}
+/**
+ * Compute module for Multi-agent System (MAS).
+ */
+package org.age.compute.mas;

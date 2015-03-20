@@ -23,16 +23,15 @@ import org.age.compute.mas.agent.AgentBehavior;
 
 import org.testng.annotations.Test;
 
-public class ConfigurationLoaderTest {
+public final class ConfigurationLoaderTest {
 
-	public static class Foo extends AgentBehavior {
-
-		@Override public void doStep(int step) {
+	public static class SampleAgent extends AgentBehavior {
+		@Override public void doStep(final int step) {
+			// Empty
 		}
 	}
 
-	@Test public void foo() {
-		Configuration config = ConfigurationLoader.load(
-				this.getClass().getClassLoader().getResourceAsStream("sample.cfg"));
+	@Test public void test_loadingSampleConfig() {
+		ConfigurationLoader.load(getClass().getClassLoader().getResourceAsStream("sample.cfg"));
 	}
 }

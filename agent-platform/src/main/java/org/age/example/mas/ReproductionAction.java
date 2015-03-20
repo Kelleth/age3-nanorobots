@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Intelligent Information Systems Group.
+ * Copyright (C) 2014-2015 Intelligent Information Systems Group.
  *
  * This file is part of AgE.
  *
@@ -29,23 +29,23 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.Random;
 
-public class ReproductionAction implements Action {
+public final class ReproductionAction implements Action {
 
-	private static final Logger logger = LoggerFactory.getLogger(ReproductionAction.class);
+	private static final Logger log = LoggerFactory.getLogger(ReproductionAction.class);
 
-	private Random random = new Random();
+	private final Random random = new Random();
 
-	@Override public void execute(Agent<?> parent, Collection<Agent<?>> agents) {
-		@SuppressWarnings("unchecked") Collection<Agent<DummyAgent>> castedAgents = (Collection)agents;
+	@Override public void execute(final Agent<?> parent, final Collection<Agent<?>> agents) {
+		@SuppressWarnings("unchecked") final Collection<Agent<DummyAgent>> castedAgents = (Collection)agents;
 
-		for (Agent<DummyAgent> agent : castedAgents) {
+		for (final Agent<DummyAgent> agent : castedAgents) {
 			if (random.nextInt(100) == 0) {
-				Agent<DummyAgent> newAgent = AgentBuilder.baseOn(agent).build();
-				int energyForNewAgent = agent.behavior().getEnergy() / 2;
+				final Agent<DummyAgent> newAgent = AgentBuilder.baseOn(agent).build();
+				final int energyForNewAgent = agent.behavior().getEnergy() / 2;
 				newAgent.behavior().setEnergy(energyForNewAgent);
 				agent.behavior().setEnergy(agent.behavior().getEnergy() - energyForNewAgent);
 
-				logger.info("Created new agent from: " + agent.name());
+				log.info("Created new agent from: {}.", agent.name());
 				parent.addChild(newAgent);
 			}
 		}

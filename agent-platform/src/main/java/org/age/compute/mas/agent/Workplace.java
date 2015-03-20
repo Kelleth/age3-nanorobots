@@ -19,30 +19,46 @@
 
 package org.age.compute.mas.agent;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.collect.Lists.newLinkedList;
+import static java.util.Objects.requireNonNull;
+
 import org.age.compute.mas.action.Action;
 import org.age.compute.mas.agent.Workplace.WorkplaceBehavior;
 
 import com.google.common.collect.ImmutableList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class Workplace implements Agent<WorkplaceBehavior>, Runnable {
 
+	private static final Logger log = LoggerFactory.getLogger(Workplace.class);
+
 	private final String name;
 
 	private final List<Action> actions;
 
+	private final WorkplaceBehavior behavior = new WorkplaceBehavior();
+
+	private final List<Agent<?>> children = newLinkedList();
+
+	private final List<Agent<?>> agentsForRemovalAtTheEndOfTurn = newLinkedList();
+
 	public Workplace(final String name, final List<Class<Action>> actions) {
-		this.name = name;
-		this.actions = actions.stream().map(AgentUtils::instantiateSafely).collect(Collectors.toList());
+		this.name = requireNonNull(name);
+		this.actions = requireNonNull(actions).stream().map(AgentUtils::instantiateSafely).collect(Collectors.toList());
 	}
 
 	public class WorkplaceBehavior extends AgentBehavior {
 		@Override public void doStep(final int stepNumber) {
-			for (final Agent agent : children()) {
+			log.debug("Workplace step on children {}.", stepNumber);
+
+			for (final Agent<?> agent : children()) {
 				agent.behavior().doStep(stepNumber);
 			}
 
@@ -56,34 +72,28 @@ public class Workplace implements Agent<WorkplaceBehavior>, Runnable {
 		agentsForRemovalAtTheEndOfTurn.clear();
 	}
 
-	private final WorkplaceBehavior behavior = new WorkplaceBehavior();
-
-	private final List<Agent<?>> children = new LinkedList<>();
-
-	private final List<Agent> agentsForRemovalAtTheEndOfTurn = new LinkedList<>();
-
 	@Override public List<Agent<?>> children() {
-		return children;
+		return ImmutableList.copyOf(children);
 	}
 
 	@Override public void addChild(final Agent<?> child) {
-		children.add(child);
+		children.add(requireNonNull(child));
 	}
 
 	@Override public void addChildren(final Collection<Agent<?>> children) {
-		this.children.addAll(children);
+		this.children.addAll(requireNonNull(children));
 	}
 
 	@Override public void removeChild(final Agent<?> child) {
-		agentsForRemovalAtTheEndOfTurn.add(child);
+		agentsForRemovalAtTheEndOfTurn.add(requireNonNull(child));
 	}
 
-	@Override public void setParent(final Agent parent) {
-		throw new UnsupportedOperationException();
+	@Override public void setParent(final Agent<?> parent) {
+		throw new UnsupportedOperationException("Workplaces have no parents.");
 	}
 
-	@Override public Agent getParent() {
-		throw new UnsupportedOperationException();
+	@Override public Agent<?> getParent() {
+		throw new UnsupportedOperationException("Workplaces have no parents.");
 	}
 
 	@Override public String name() {
@@ -105,4 +115,7 @@ public class Workplace implements Agent<WorkplaceBehavior>, Runnable {
 		}
 	}
 
+	@Override public String toString() {
+		return toStringHelper(this).addValue(name).toString();
+	}
 }

@@ -17,21 +17,19 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.example.mas;
+package org.age.compute.mas.agent;
 
-import org.age.compute.mas.action.Action;
-import org.age.compute.mas.agent.Agent;
+public final class AgentInstantiationException extends RuntimeException {
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+	public AgentInstantiationException(final String message) {
+		super(message);
+	}
 
-import java.util.Collection;
+	public AgentInstantiationException(final String message, final Throwable cause) {
+		super(message, cause);
+	}
 
-public final class WorkplaceStateCheckerAction implements Action {
-
-	private static final Logger logger = LoggerFactory.getLogger(WorkplaceStateCheckerAction.class);
-
-	@Override public void execute(final Agent<?> parent, final Collection<Agent<?>> agents) {
-		logger.info("We have {} agents currently", agents.size());
+	public AgentInstantiationException(final Throwable cause) {
+		super(cause);
 	}
 }

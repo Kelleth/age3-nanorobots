@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Intelligent Information Systems Group.
+ * Copyright (C) 2014-2015 Intelligent Information Systems Group.
  *
  * This file is part of AgE.
  *
@@ -19,23 +19,31 @@
 
 package org.age.example.mas;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 import org.age.compute.mas.agent.AgentBehavior;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class DummyAgent extends AgentBehavior {
 
+	private static final Logger log = LoggerFactory.getLogger(DummyAgent.class);
+
 	private int energy = new Random().nextInt(100_000);
 
-	@Override public void doStep(int stepNumber) {
+	@Override public void doStep(final int stepNumber) {
+		log.debug("Step {}.", stepNumber);
 		heavyComputations();
 	}
 
 	private void heavyComputations() {
 		try {
-			TimeUnit.MILLISECONDS.sleep(50);
-		} catch (InterruptedException ignored) {
+			TimeUnit.MILLISECONDS.sleep(50L);
+		} catch (final InterruptedException ignored) {
 			Thread.currentThread().interrupt();
 		}
 	}
@@ -44,7 +52,11 @@ public class DummyAgent extends AgentBehavior {
 		return energy;
 	}
 
-	public void setEnergy(int energy) {
+	public void setEnergy(final int energy) {
 		this.energy = energy;
+	}
+
+	@Override public String toString() {
+		return toStringHelper(this).add("energy", energy).toString();
 	}
 }

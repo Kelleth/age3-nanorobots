@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * This interface represents internal structure of Agent.
+ * This interface represents internal structure of an agent.
  *
  * While setting up platform for new computation, we connect AgentBehaviors (created by user)
  * with Agent class in {@link org.age.compute.mas.agent.AgentBuilder} using proxy. This class shouldn't be used

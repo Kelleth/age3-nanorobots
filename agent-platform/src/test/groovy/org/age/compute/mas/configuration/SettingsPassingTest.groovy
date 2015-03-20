@@ -26,50 +26,48 @@ import org.testng.annotations.Test
 
 class SettingsPassingTest {
 
-    static final KEY1 = "foo"
-    static final VALUE1 = 1
-    static final VALUE2 = "some property"
-    static final KEY2 = "bar"
+	static final KEY1 = "foo"
+	static final VALUE1 = 1
+	static final VALUE2 = "some property"
+	static final KEY2 = "bar"
 
-    static Map<String, Object> actualSettings
+	static Map<String, Object> actualSettings
 
-    static class A extends AgentBehavior {
+	static class A extends AgentBehavior {
 
-        @Override
-        void doStep(int stepNumber) {
-            SettingsPassingTest.actualSettings = getSettings()
-        }
-    }
+		@Override
+		void doStep(int stepNumber) {
+			SettingsPassingTest.actualSettings = getSettings()
+		}
+	}
 
-    @Test
-    void should_pass_settings_properly() {
-        actualSettings = null
+	@Test
+	void should_pass_settings_properly() {
+		final configuration = ConfigurationLoader.load("""
+			final SETTINGS = [
+				"$KEY1": $VALUE1,
+				"$KEY2": "$VALUE2",
+			]
 
-        final configuration = ConfigurationLoader.load("""
-            final SETTINGS = [
-                "$KEY1": $VALUE1,
-                "$KEY2": "$VALUE2",
-            ]
-    
-            configuration {
-                computationDurationInSeconds = 1
-                
-                workplace {
-                    agent {
-                        agentClass = org.age.compute.mas.configuration.SettingsPassingTest.A
-                        settings = SETTINGS
-                    }
-                }
-            }
-             """)
+			configuration {
+				computationDurationInSeconds = 1
 
-        final platform = new Platform(configuration)
-        platform.run()
+				workplace {
+					agent {
+						agentClass = org.age.compute.mas.configuration.SettingsPassingTest.A
+						settings = SETTINGS
+					}
+				}
+			}
+			 """)
 
-        Assertions.assertThat((Map) actualSettings)
-                .hasSize(2)
-                .containsEntry(KEY1, VALUE1)
-                .containsEntry(KEY2, VALUE2)
-    }
+		final platform = new Platform(configuration)
+		platform.run()
+
+		Assertions.assertThat(platform.workplaces().get(0).children().get(0).settings())
+				.hasSize(2)
+				.containsEntry(KEY1, VALUE1)
+				.containsEntry(KEY2, VALUE2)
+	}
 
 }

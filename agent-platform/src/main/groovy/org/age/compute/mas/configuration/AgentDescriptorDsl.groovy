@@ -22,7 +22,6 @@ package org.age.compute.mas.configuration
 import groovy.transform.EqualsAndHashCode
 import org.age.compute.mas.action.Action
 import org.age.compute.mas.agent.AgentBehavior
-import org.age.compute.mas.exception.CannotLoadConfigurationException
 
 @EqualsAndHashCode
 class AgentDescriptorDsl implements AgentDescriptor {

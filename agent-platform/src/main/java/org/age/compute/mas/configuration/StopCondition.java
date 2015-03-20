@@ -19,9 +19,15 @@
 
 package org.age.compute.mas.configuration;
 
+/**
+ * Stop condition defines when the computation should be terminated.
+ */
 @FunctionalInterface
 public interface StopCondition {
 
+	/**
+	 * Returns true if the stop condition has been reached, false otherwise.
+	 */
 	boolean isReached();
 
 }

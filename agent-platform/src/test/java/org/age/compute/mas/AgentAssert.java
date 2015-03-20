@@ -24,22 +24,22 @@ import org.age.compute.mas.agent.Agent;
 import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.Assertions;
 
-public class AgentAssert extends AbstractAssert<AgentAssert, Agent<?>> {
+public final class AgentAssert extends AbstractAssert<AgentAssert, Agent<?>> {
 
-	public AgentAssert(Agent<?> actual) {
+	public AgentAssert(final Agent<?> actual) {
 		super(actual, AgentAssert.class);
 	}
 
-	public static AgentAssert assertThat(Agent<?> actual) {
+	public static AgentAssert assertThat(final Agent<?> actual) {
 		return new AgentAssert(actual);
 	}
 
-	public AgentAssert hasName(String name) {
+	public AgentAssert hasName(final String name) {
 		Assertions.assertThat(actual.name()).describedAs("Name is different").isEqualTo(name);
 		return this;
 	}
 
-	public AgentAssert numberOfChildrenEquals(int number) {
+	public AgentAssert numberOfChildrenEquals(final int number) {
 		Assertions.assertThat(actual.children()).describedAs("Different number of children").hasSize(number);
 		return this;
 	}

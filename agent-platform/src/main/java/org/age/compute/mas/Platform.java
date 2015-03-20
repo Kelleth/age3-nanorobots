@@ -19,6 +19,9 @@
 
 package org.age.compute.mas;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+import static com.google.common.collect.Lists.newArrayListWithExpectedSize;
+import static java.util.Objects.requireNonNull;
 import static org.age.compute.mas.misc.TimeMeasurement.measureTime;
 
 import org.age.compute.mas.agent.Agent;
@@ -35,7 +38,6 @@ import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -43,7 +45,7 @@ import java.util.stream.Collectors;
 /**
  * Main class for running agents platform
  */
-public class Platform implements Runnable {
+public final class Platform implements Runnable {
 
 	private static final Logger log = LoggerFactory.getLogger(Platform.class);
 
@@ -52,11 +54,12 @@ public class Platform implements Runnable {
 	private final List<Workplace> workplaces;
 
 	public Platform(final Configuration configuration) {
-		this.configuration = configuration;
+		this.configuration = requireNonNull(configuration);
 		workplaces = measureTime(() -> instantiateWorkplaces(configuration.workplaces()), "Workplaces created in: ");
 	}
 
 	private List<Workplace> instantiateWorkplaces(final List<WorkplaceDescriptor> workplaces) {
+		log.debug("Instantiating {} workplaces.", workplaces.size());
 		final ImmutableList.Builder<Workplace> builder = ImmutableList.builder();
 		for (int i = 0; i < workplaces.size(); i++) {
 			final WorkplaceDescriptor desc = workplaces.get(i);
@@ -64,10 +67,12 @@ public class Platform implements Runnable {
 			workplace.addChildren(instantiateAgents(workplace, desc.agents()));
 			builder.add(workplace);
 		}
+		log.debug("Finished workplaces instantiation.");
 		return builder.build();
 	}
 
 	@Override public void run() {
+		log.info("MAS starting.");
 		final List<Thread> threads = createThreadsForWorkplaces();
 		waitUntilStopConditionReached();
 		try {
@@ -75,10 +80,11 @@ public class Platform implements Runnable {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
+		log.info("MAS stopped.");
 	}
 
 	private List<Thread> createThreadsForWorkplaces() {
-		final List<Thread> threads = new ArrayList<>(workplaces.size());
+		final List<Thread> threads = newArrayListWithExpectedSize(workplaces.size());
 		for (int workplaceIndex = 0; workplaceIndex < workplaces.size(); workplaceIndex++) {
 			createWorkplaceThread(threads, workplaceIndex);
 		}
@@ -104,12 +110,12 @@ public class Platform implements Runnable {
 	}
 
 	private void stopWorkplaces(final List<Thread> threads) throws InterruptedException {
-		log.info("Stopping workplaces");
+		log.debug("Workplaces stop was requested.");
 		for (final Thread thread : threads) {
 			thread.interrupt();
 			thread.join(10_000); // wait up to 10 seconds for thread
 		}
-		log.info("Workplaces stopped");
+		log.info("Workplaces stopped.");
 	}
 
 	private List<Agent<?>> instantiateAgents(final Workplace workplace, final List<AgentDescriptor> agentsDescriptors) {
@@ -118,7 +124,7 @@ public class Platform implements Runnable {
 	}
 
 	private Agent<?> buildAgent(final AgentDescriptor descriptor, final Agent<?> parent) {
-		final Agent<?> agent = AgentBuilder.builder(descriptor.agentClass())
+		final Agent<?> agent = AgentBuilder.create(descriptor.agentClass())
 		                                   .withActions(descriptor.actions())
 		                                   .withSettings(descriptor.settings())
 		                                   .withParent(parent)
@@ -134,7 +140,11 @@ public class Platform implements Runnable {
 		return agent;
 	}
 
-	@VisibleForTesting List<Workplace> getWorkplaces() {
-		return workplaces;
+	@VisibleForTesting List<Workplace> workplaces() {
+		return ImmutableList.copyOf(workplaces);
+	}
+
+	@Override public String toString() {
+		return toStringHelper(this).toString();
 	}
 }
