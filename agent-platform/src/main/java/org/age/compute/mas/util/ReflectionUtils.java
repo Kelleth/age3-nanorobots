@@ -17,12 +17,15 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.compute.mas.misc;
+package org.age.compute.mas.util;
+
+import static com.google.common.collect.Sets.newLinkedHashSet;
+import static java.util.Objects.nonNull;
+import static java.util.Objects.requireNonNull;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 public final class ReflectionUtils {
@@ -31,12 +34,19 @@ public final class ReflectionUtils {
 
 	public static Collection<Method> allMethodsAnnotatedBy(final Class<?> clazz,
 	                                                       final Class<? extends Annotation> annotation) {
-		final Set<Method> methods = new LinkedHashSet<>();
+		requireNonNull(clazz);
+		requireNonNull(annotation);
+
+		final Set<Method> methods = newLinkedHashSet();
 		for (final Method method : clazz.getMethods()) {
-			if (method.getAnnotation(annotation) != null) { methods.add(method); }
+			if (nonNull(method.getAnnotation(annotation))) {
+				methods.add(method);
+			}
 		}
 		for (final Method method : clazz.getDeclaredMethods()) {
-			if (method.getAnnotation(annotation) != null) { methods.add(method); }
+			if (nonNull(method.getAnnotation(annotation))) {
+				methods.add(method);
+			}
 		}
 		return methods;
 	}

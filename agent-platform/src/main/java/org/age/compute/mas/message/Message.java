@@ -35,11 +35,11 @@ public class Message {
 		this.payload = payload;
 	}
 
-	public Predicate<AgentBehavior> getPredicate() {
+	public Predicate<AgentBehavior> predicate() {
 		return recipientSelectingPredicate;
 	}
 
-	public Serializable getPayload() {
+	public Serializable payload() {
 		return payload;
 	}
 }

@@ -22,12 +22,12 @@ package org.age.compute.mas;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.collect.Lists.newArrayListWithExpectedSize;
 import static java.util.Objects.requireNonNull;
-import static org.age.compute.mas.misc.TimeMeasurement.measureTime;
+import static org.age.compute.mas.util.TimeMeasurement.measureTime;
 
 import org.age.compute.mas.agent.Agent;
-import org.age.compute.mas.agent.AgentBuilder;
+import org.age.compute.mas.agent.internal.AgentBuilder;
 import org.age.compute.mas.agent.Workplace;
-import org.age.compute.mas.agent.internal.InternalAgentRepresentation;
+import org.age.compute.mas.agent.internal.InternalAgentView;
 import org.age.compute.mas.configuration.AgentDescriptor;
 import org.age.compute.mas.configuration.Configuration;
 import org.age.compute.mas.configuration.WorkplaceDescriptor;
@@ -77,8 +77,8 @@ public final class Platform implements Runnable {
 		waitUntilStopConditionReached();
 		try {
 			stopWorkplaces(threads);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+		} catch (final InterruptedException ignored) {
+			Thread.currentThread().interrupt();
 		}
 		log.info("MAS stopped.");
 	}
@@ -131,11 +131,11 @@ public final class Platform implements Runnable {
 		                                   .withName(descriptor.name())
 		                                   .build();
 
-		final InternalAgentRepresentation internalAgentRepresentation = (InternalAgentRepresentation)agent;
+		final InternalAgentView internalAgentView = (InternalAgentView)agent;
 		descriptor.children()
 		          .stream()
 		          .map(childDescriptor -> buildAgent(childDescriptor, agent))
-		          .forEach(internalAgentRepresentation::addChild);
+		          .forEach(internalAgentView::addChild);
 
 		return agent;
 	}

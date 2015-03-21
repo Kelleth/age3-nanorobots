@@ -37,7 +37,7 @@ class SettingsPassingTest {
 
 		@Override
 		void doStep(int stepNumber) {
-			SettingsPassingTest.actualSettings = getSettings()
+			SettingsPassingTest.actualSettings = settings()
 		}
 	}
 

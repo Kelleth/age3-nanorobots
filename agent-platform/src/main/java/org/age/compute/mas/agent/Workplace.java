@@ -25,6 +25,7 @@ import static java.util.Objects.requireNonNull;
 
 import org.age.compute.mas.action.Action;
 import org.age.compute.mas.agent.Workplace.WorkplaceBehavior;
+import org.age.compute.mas.agent.internal.AgentUtils;
 
 import com.google.common.collect.ImmutableList;
 

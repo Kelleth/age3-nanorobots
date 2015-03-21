@@ -21,7 +21,7 @@ package org.age.example.mas;
 
 import org.age.compute.mas.action.Action;
 import org.age.compute.mas.agent.Agent;
-import org.age.compute.mas.agent.AgentBuilder;
+import org.age.compute.mas.agent.internal.AgentBuilder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

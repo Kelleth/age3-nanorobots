@@ -19,7 +19,7 @@
 
 package org.age.compute.mas.configuration;
 
-import static org.age.compute.mas.misc.TimeMeasurement.measureTime;
+import static org.age.compute.mas.util.TimeMeasurement.measureTime;
 
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.control.customizers.ImportCustomizer;
@@ -32,6 +32,8 @@ import java.io.StringReader;
 import groovy.lang.GroovyShell;
 
 public final class ConfigurationLoader {
+
+	private ConfigurationLoader() {}
 
 	public static Configuration load(final Reader configuration) {
 		return measureTime(() -> {

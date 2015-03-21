@@ -17,16 +17,17 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.compute.mas.agent;
+package org.age.compute.mas.agent.internal;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static java.util.Objects.requireNonNull;
-import static org.age.compute.mas.misc.ReflectionUtils.allMethodsAnnotatedBy;
+import static org.age.compute.mas.util.ReflectionUtils.allMethodsAnnotatedBy;
 
-import org.age.compute.mas.InternalAgentRepresentationProxyMethodHandler;
 import org.age.compute.mas.action.Action;
-import org.age.compute.mas.agent.internal.InternalAgentRepresentation;
+import org.age.compute.mas.agent.Agent;
+import org.age.compute.mas.agent.AgentBehavior;
+import org.age.compute.mas.agent.AgentInstantiationException;
 import org.age.compute.mas.message.MessageHandler;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -65,13 +66,13 @@ public final class AgentBuilder<A extends AgentBehavior> {
 
 	@SuppressWarnings("unchecked")
 	public static <A extends AgentBehavior> AgentBuilder<A> baseOn(final A existingAgent) {
-		final InternalAgentRepresentation internalAgentRepresentation = (InternalAgentRepresentation)requireNonNull(
+		final InternalAgentView internalAgentView = (InternalAgentView)requireNonNull(
 				existingAgent);
 		// @formatter:off
-		return (AgentBuilder<A>)create(internalAgentRepresentation.behaviorClass())
-				.withActions(internalAgentRepresentation.actionsTypes())
-				.withParent(internalAgentRepresentation.getParent())
-				.withSettings(internalAgentRepresentation.settings());
+		return (AgentBuilder<A>)create(internalAgentView.behaviorClass())
+				.withActions(internalAgentView.actionsTypes())
+				.withParent(internalAgentView.getParent())
+				.withSettings(internalAgentView.settings());
 		// @formatter:on
 	}
 
@@ -96,14 +97,14 @@ public final class AgentBuilder<A extends AgentBehavior> {
 	}
 
 	@SuppressWarnings("unchecked") public Agent<A> build() {
-		final InternalAgentRepresentationImpl internalAgent = new InternalAgentRepresentationImpl(actions, settings,
+		final InternalAgentViewImpl internalAgent = new InternalAgentViewImpl(actions, settings,
 		                                                                                          parent, name);
 
 		try {
 			verifyClassCorrectness(agentClass);
 			final Class<?> clazz = prepareClassForThisAgent(agentClass);
 			final Object proxy = clazz.getConstructor().newInstance();
-			((ProxyObject)proxy).setHandler(new InternalAgentRepresentationProxyMethodHandler(internalAgent));
+			((ProxyObject)proxy).setHandler(new AgentProxyMethodHandler(internalAgent));
 
 			final A behavior = (A)proxy;
 			internalAgent.setSelf(behavior);
@@ -121,7 +122,7 @@ public final class AgentBuilder<A extends AgentBehavior> {
 	private static <A extends AgentBehavior> Class<?> prepareClassForThisAgent(final Class<A> agentClass) {
 		final ProxyFactory factory = new ProxyFactory();
 		factory.setSuperclass(agentClass);
-		factory.setInterfaces(new Class[] {InternalAgentRepresentation.class});
+		factory.setInterfaces(new Class[] {InternalAgentView.class});
 		return factory.createClass();
 	}
 

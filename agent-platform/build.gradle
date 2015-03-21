@@ -5,7 +5,7 @@ apply plugin: 'maven-publish'
 dependencies {
     compile project(':')
     compile 'org.javassist:javassist:+'
-    compile 'org.codehaus.groovy:groovy:+'
+    compile 'org.codehaus.groovy:groovy-all:+'
 }
 
 task console(dependsOn: 'classes') << {

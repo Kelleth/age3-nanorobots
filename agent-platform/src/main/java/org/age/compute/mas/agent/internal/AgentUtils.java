@@ -17,20 +17,20 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.compute.mas.agent;
+package org.age.compute.mas.agent.internal;
 
 import java.util.UUID;
 
-final class AgentUtils {
+public final class AgentUtils {
 
 	private AgentUtils() {}
 
-	static String randomName() {
+	public static String randomName() {
 		// TODO: not very efficient, but enough for now; replace it with something faster in the future
 		return UUID.randomUUID().toString();
 	}
 
-	static <O> O instantiateSafely(final Class<O> clazz) {
+	public static <O> O instantiateSafely(final Class<O> clazz) {
 		try {
 			return clazz.newInstance();
 		} catch (final InstantiationException | IllegalAccessException e) {

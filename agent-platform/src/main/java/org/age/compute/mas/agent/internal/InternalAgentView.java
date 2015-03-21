@@ -30,11 +30,11 @@ import java.util.stream.Stream;
 /**
  * This interface represents internal structure of an agent.
  *
- * While setting up platform for new computation, we connect AgentBehaviors (created by user)
- * with Agent class in {@link org.age.compute.mas.agent.AgentBuilder} using proxy. This class shouldn't be used
- * by end user and it should event be used in platform internal code unless really needed.
+ * While setting up platform for new computation, we connect {@link AgentBehavior}s (created by user)
+ * with {@link Agent} class in {@link AgentBuilder} using proxy. This interface should not be used
+ * by the end user and it should not be used in platform internal code unless really needed.
  */
-public interface InternalAgentRepresentation extends Agent<AgentBehavior> {
+public interface InternalAgentView extends Agent<AgentBehavior> {
 
 	void doStepOnChildren(int stepNumber);
 

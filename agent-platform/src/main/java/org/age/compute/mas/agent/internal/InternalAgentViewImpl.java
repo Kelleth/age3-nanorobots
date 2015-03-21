@@ -17,7 +17,7 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.compute.mas.agent;
+package org.age.compute.mas.agent.internal;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.collect.Lists.newArrayList;
@@ -27,7 +27,8 @@ import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
 import org.age.compute.mas.action.Action;
-import org.age.compute.mas.agent.internal.InternalAgentRepresentation;
+import org.age.compute.mas.agent.Agent;
+import org.age.compute.mas.agent.AgentBehavior;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -44,9 +45,9 @@ import java.util.stream.Stream;
 
 import android.annotation.Nullable;
 
-final class InternalAgentRepresentationImpl implements InternalAgentRepresentation {
+final class InternalAgentViewImpl implements InternalAgentView {
 
-	private static final Logger log = LoggerFactory.getLogger(InternalAgentRepresentationImpl.class);
+	private static final Logger log = LoggerFactory.getLogger(InternalAgentViewImpl.class);
 
 	private final List<Agent<?>> children = newArrayList();
 
@@ -64,8 +65,8 @@ final class InternalAgentRepresentationImpl implements InternalAgentRepresentati
 
 	private final List<Class<Action>> actionsTypes = newArrayList();
 
-	InternalAgentRepresentationImpl(final List<Class<Action>> actionsTypes, final Map<String, Object> settings,
-	                                final @Nullable Agent<?> parent, final @Nullable String name) {
+	InternalAgentViewImpl(final List<Class<Action>> actionsTypes, final Map<String, Object> settings,
+	                      final @Nullable Agent<?> parent, final @Nullable String name) {
 		this.actionsTypes.addAll(requireNonNull(actionsTypes));
 		this.settings.putAll(settings);
 		this.parent = parent;
@@ -111,7 +112,7 @@ final class InternalAgentRepresentationImpl implements InternalAgentRepresentati
 		return ImmutableList.copyOf(children);
 	}
 
-	@Override public void setParent(final Agent<?> parent) {
+	@Override public void setParent(final @Nullable Agent<?> parent) {
 		this.parent = parent;
 	}
 
@@ -159,10 +160,10 @@ final class InternalAgentRepresentationImpl implements InternalAgentRepresentati
 		if (this == o) {
 			return true;
 		}
-		if (!(o instanceof InternalAgentRepresentation)) {
+		if (!(o instanceof InternalAgentView)) {
 			return false;
 		}
-		final InternalAgentRepresentationImpl other = (InternalAgentRepresentationImpl)o;
+		final InternalAgentViewImpl other = (InternalAgentViewImpl)o;
 		return Objects.equals(name, other.name);
 	}
 

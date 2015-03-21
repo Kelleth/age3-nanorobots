@@ -19,37 +19,56 @@
 
 package org.age.compute.mas.agent;
 
-import org.age.compute.mas.message.Message;
-
 import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Class that describes agent behavior
+ * Class that describes agent behavior.
+ *
+ * In order to instantiate a new agent based on a behavior, the programmer needs to use {@link
+ * org.age.compute.mas.agent.internal.AgentBuilder}.
  */
 public abstract class AgentBehavior {
 
 	/**
-	 * Step logic
+	 * Method run by an agent in each step. It needs to be overridden in subclasses.
+	 *
+	 * Code executed in this method should not take too much time. The intention of "stepped" agents is to
+	 * have short computations block run repeatedly.
 	 */
 	public abstract void doStep(int stepNumber);
 
-	protected Map<String, Object> getSettings() {
-		// nothing here, this method is enhanced in {@link org.age.compute.agent.agent.EnhancedAgent}
+	/**
+	 * Returns settings set for an agent.
+	 *
+	 * This implementations does nothing - it is handled by a proxy class.
+	 * In case of wrong usage (when the class was not created by {@link org.age.compute.mas.agent.internal.AgentBuilder}
+	 * an empty map is returned.
+	 */
+	protected Map<String, Object> settings() {
 		return Collections.emptyMap();
 	}
 
-	protected final void sendMessage(final Message message) {
-		// TODO
-	}
-
+	/**
+	 * Returns a stream of children.
+	 *
+	 * Subclasses should not override this method.
+	 *
+	 * This implementations does nothing - it is handled by a proxy class.
+	 * In case of wrong usage (when the class was not created by {@link org.age.compute.mas.agent.internal.AgentBuilder}
+	 * it throws {@link AgentInstantiationException}.
+	 */
 	public Stream<AgentBehavior> query() {
-		// nothing here, this method is enhanced in {@link org.age.compute.agent.agent.Enha ncedAgent}
-		return null;
+		throw new AgentInstantiationException("Query method has not been overridden by proxy.");
 	}
 
-	public <B extends AgentBehavior> Stream<B> query(final Class<B> queryLimiter) {
+	/**
+	 * Returns a filtered stream of children.
+	 *
+	 * Subclasses should not override this method.
+	 */
+	public final <B extends AgentBehavior> Stream<B> query(final Class<B> queryLimiter) {
 		return query().filter(queryLimiter::isInstance).map(queryLimiter::cast);
 	}
 

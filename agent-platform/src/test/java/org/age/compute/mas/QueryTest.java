@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.age.compute.mas.agent.Agent;
 import org.age.compute.mas.agent.AgentBehavior;
-import org.age.compute.mas.agent.AgentBuilder;
+import org.age.compute.mas.agent.internal.AgentBuilder;
 import org.age.compute.mas.agent.Workplace;
 
 import org.testng.annotations.Test;
@@ -67,7 +67,7 @@ public final class QueryTest {
 		}
 	}
 
-	@Test public void querying_shuld_work_in_basic_case() {
+	@Test public void test_queryShouldWorkInBasicCase() {
 		final Workplace workplace = new Workplace("", Collections.emptyList());
 
 		final Agent<AgentWithMagicNumber> agent1 = AgentBuilder.create(AgentWithMagicNumber.class).build();

@@ -17,7 +17,7 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.age.compute.mas.misc;
+package org.age.compute.mas.util;
 
 import static java.util.Objects.requireNonNull;
 
