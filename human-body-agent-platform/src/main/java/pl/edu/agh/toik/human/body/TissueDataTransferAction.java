@@ -1,11 +1,9 @@
-package pl.edu.agh.toik.human.body.actions;
+package pl.edu.agh.toik.human.body;
 
 import org.age.compute.mas.action.Action;
 import org.age.compute.mas.agent.Agent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pl.edu.agh.toik.human.body.agents.BloodstreamAgent;
-import pl.edu.agh.toik.human.body.agents.HumanTissueAgent;
 
 import java.util.Collection;
 

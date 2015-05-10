@@ -1,4 +1,4 @@
-package pl.edu.agh.toik.human.body.agents;
+package pl.edu.agh.toik.human.body;
 
 import org.age.compute.mas.agent.AgentBehavior;
 import org.slf4j.Logger;

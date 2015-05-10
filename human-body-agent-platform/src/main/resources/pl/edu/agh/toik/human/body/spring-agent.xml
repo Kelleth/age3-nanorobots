@@ -5,7 +5,7 @@
 
 	<bean id="configuration" class="org.age.compute.mas.configuration.ConfigurationLoader"
 	      factory-method="loadFromClassPath">
-		<constructor-arg value="computation.cfg"/>
+		<constructor-arg value="pl/edu/agh/toik/human/body/computation.cfg"/>
 	</bean>
 
 	<bean id="runnable"
