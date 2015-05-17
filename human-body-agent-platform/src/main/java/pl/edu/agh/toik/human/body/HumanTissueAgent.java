@@ -1,9 +1,10 @@
 package pl.edu.agh.toik.human.body;
 
 
-import org.age.compute.mas.agent.AgentBehavior;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pl.edu.agh.toik.human.body.agent.AgentBehavior;
+import pl.edu.agh.toik.human.body.agent.Coordinates;
 
 import java.util.Random;
 
@@ -16,7 +17,13 @@ public class HumanTissueAgent extends AgentBehavior {
 
     private double calcium = new Random().nextDouble();
 
+    private Coordinates position;
+
     private static final Logger log = LoggerFactory.getLogger(HumanTissueAgent.class);
+
+    public HumanTissueAgent(Coordinates position) {
+        this.position = position;
+    }
 
     @Override
     public void doStep(int stepNumber) {

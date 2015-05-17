@@ -1,9 +1,8 @@
 package pl.edu.agh.toik.human.body;
 
-import org.age.compute.mas.action.Action;
-import org.age.compute.mas.agent.Agent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pl.edu.agh.toik.human.body.agent.Agent;
 
 import java.util.Collection;
 
@@ -15,7 +14,7 @@ public class TissueDataTransferAction implements Action {
     private static final Logger logger = LoggerFactory.getLogger(TissueDataTransferAction.class);
 
     @Override
-    public void execute(Agent<?> parent, Collection<Agent<?>> agents) {
+    public void execute(Collection<Agent<?>> agents) {
         @SuppressWarnings("unchecked")
         final Collection<Agent> castedAgents = (Collection)agents;
 

@@ -1,8 +1,9 @@
 package pl.edu.agh.toik.human.body;
 
-import org.age.compute.mas.agent.AgentBehavior;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pl.edu.agh.toik.human.body.agent.AgentBehavior;
+import pl.edu.agh.toik.human.body.agent.Coordinates;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
@@ -13,7 +14,11 @@ public class BloodstreamAgent extends AgentBehavior {
 
     private double collectedCalcium = 0;
     private static final Logger log = LoggerFactory.getLogger(BloodstreamAgent.class);
+    private Coordinates position;
 
+    public BloodstreamAgent(Coordinates position) {
+        this.position = position;
+    }
 
     @Override
     public void doStep(int stepNumber) {

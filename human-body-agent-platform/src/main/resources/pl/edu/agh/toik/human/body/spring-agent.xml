@@ -3,13 +3,13 @@
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
 
-	<bean id="configuration" class="org.age.compute.mas.configuration.ConfigurationLoader"
+	<bean id="configuration" class="pl.edu.agh.toik.human.body.configuration.ConfigurationLoader"
 	      factory-method="loadFromClassPath">
 		<constructor-arg value="pl/edu/agh/toik/human/body/computation.cfg"/>
 	</bean>
 
 	<bean id="runnable"
-	      class="org.age.compute.mas.Platform">
+	      class="pl.edu.agh.toik.human.body.HumanBodyPlatform">
 		<constructor-arg ref="configuration"/>
 	</bean>
 
