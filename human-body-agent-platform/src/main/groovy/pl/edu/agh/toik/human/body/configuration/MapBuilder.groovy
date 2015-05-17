@@ -19,33 +19,20 @@
 
 package pl.edu.agh.toik.human.body.configuration
 
+class MapBuilder {
+    
+    def map = [:]
 
-/**
- * Entry point to configuration DSL. Reading about Groovy DSL support is recommended
- */
-class ConfigurationDsl implements Configuration {
-
-    private List<AgentDescriptor> agents = []
-
-    static Configuration configuration(@DelegatesTo(ConfigurationDsl) Closure<Object> closure) {
-        final config = new ConfigurationDsl()
-        closure.delegate = config
-        closure.resolveStrategy = Closure.DELEGATE_FIRST
-        closure()
-        return config
+    def propertyMissing(String name, value) {
+        map[name] = value
     }
 
-    void agent(@DelegatesTo(AgentDescriptorDsl) Closure<Object> closure) {
-        final config = new AgentDescriptorDsl()
-        closure.delegate = config
-        closure.resolveStrategy = Closure.DELEGATE_FIRST
-        closure()
-        agents.add(config)
+    def propertyMissing(String name) {
+        map[name]
     }
 
-
-    @Override
-    List<AgentDescriptor> agents() {
-        return agents;
+    def getMap() {
+        return Collections.unmodifiableMap(map)
     }
+    
 }

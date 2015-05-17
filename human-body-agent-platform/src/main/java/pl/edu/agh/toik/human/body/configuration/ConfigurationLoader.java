@@ -39,7 +39,7 @@ public final class ConfigurationLoader {
     public static Configuration load(final Reader configuration) {
         return measureTime(() -> {
             final ImportCustomizer importCustomizer = new ImportCustomizer();
-            importCustomizer.addStaticImport("org.age.compute.mas.configuration.ConfigurationDsl", "configuration");
+            importCustomizer.addStaticImport("pl.edu.agh.toik.human.body.configuration.ConfigurationDsl", "configuration");
 
             final CompilerConfiguration compilerConfiguration = new CompilerConfiguration();
             compilerConfiguration.addCompilationCustomizers(importCustomizer);

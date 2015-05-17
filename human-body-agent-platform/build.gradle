@@ -9,7 +9,7 @@ dependencies {
 }
 
 task console(dependsOn: 'classes') << {
-    def classpath = sourceSets.main.runtimeClasspath// + configurations.runtime
+    def classpath = sourceSets.main.runtimeClasspath + configurations.runtime
 
     def command = [
             'java',
