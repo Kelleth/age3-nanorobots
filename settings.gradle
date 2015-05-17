@@ -2,3 +2,5 @@ rootProject.name = 'age3'
 
 include 'agent-platform'
 
+include 'human-body-agent-platform'
+

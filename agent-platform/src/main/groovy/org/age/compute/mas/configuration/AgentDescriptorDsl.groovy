@@ -17,7 +17,7 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package pl.edu.agh.toik.human.body.configuration
+package org.age.compute.mas.configuration
 
 import groovy.transform.EqualsAndHashCode
 import org.age.compute.mas.action.Action

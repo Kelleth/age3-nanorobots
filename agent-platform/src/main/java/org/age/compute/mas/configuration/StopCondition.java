@@ -17,31 +17,17 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package pl.edu.agh.toik.human.body.configuration
+package org.age.compute.mas.configuration;
 
-import org.age.compute.mas.action.Action
+/**
+ * Stop condition defines when the computation should be terminated.
+ */
+@FunctionalInterface
+public interface StopCondition {
 
-class WorkplaceDescriptorDsl implements WorkplaceDescriptor {
-    
-    private List<AgentDescriptor> agents = []
-    List<Class<Action>> actions = []
+	/**
+	 * Returns true if the stop condition has been reached, false otherwise.
+	 */
+	boolean isReached();
 
-    def agent(@DelegatesTo(AgentDescriptorDsl) Closure<Object> closure) {
-        def child = new AgentDescriptorDsl(null)
-        agents.add(child)
-
-        closure.resolveStrategy = Closure.DELEGATE_FIRST
-        closure.delegate = child
-        closure()
-    }
-
-    @Override
-    List<AgentDescriptor> agents() {
-        return agents
-    }
-
-    @Override
-    List<Class<Action>> actions() {
-        return actions
-    }
 }

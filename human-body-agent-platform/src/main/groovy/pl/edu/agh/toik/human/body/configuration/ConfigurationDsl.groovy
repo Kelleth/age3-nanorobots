@@ -17,23 +17,21 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package pl.edu.agh.toik.human.body.configuration;
+package pl.edu.agh.toik.human.body.configuration
 
-import java.util.List;
+import org.age.compute.mas.configuration.*
+import pl.edu.agh.toik.human.body.configuration.ConfigurationDsl
+
+import java.time.Duration
 
 /**
- * Describes the Multi-agent System configuration.
+ * Entry point to configuration DSL. Reading about Groovy DSL support is recommended
  */
-public interface Configuration {
+class ConfigurationDsl implements Configuration {
 
-	/**
-	 * Returns the (non-null) list of workplaces.
-	 */
-	List<WorkplaceDescriptor> workplaces();
 
-	/**
-	 * Returns the (non-null) stop condition.
-	 */
-	StopCondition stopCondition();
-
+    @Override
+    List<AgentDescriptor> agents() {
+        return null
+    }
 }

@@ -17,19 +17,31 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package pl.edu.agh.toik.human.body.configuration
+package org.age.compute.mas.configuration
 
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.age.compute.mas.action.Action
 
-class InfiniteStopCondition implements StopCondition {
+class WorkplaceDescriptorDsl implements WorkplaceDescriptor {
+    
+    private List<AgentDescriptor> agents = []
+    List<Class<Action>> actions = []
 
-    private static final Logger logger = LoggerFactory.getLogger(InfiniteStopCondition)
+    def agent(@DelegatesTo(AgentDescriptorDsl) Closure<Object> closure) {
+        def child = new AgentDescriptorDsl(null)
+        agents.add(child)
 
-    @Override
-    boolean isReached() {
-        logger.warn("Using infinite stop condition!")
-        return false
+        closure.resolveStrategy = Closure.DELEGATE_FIRST
+        closure.delegate = child
+        closure()
     }
 
+    @Override
+    List<AgentDescriptor> agents() {
+        return agents
+    }
+
+    @Override
+    List<Class<Action>> actions() {
+        return actions
+    }
 }

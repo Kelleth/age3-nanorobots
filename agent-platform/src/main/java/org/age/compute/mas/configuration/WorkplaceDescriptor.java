@@ -17,22 +17,18 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package pl.edu.agh.toik.human.body.configuration
+package org.age.compute.mas.configuration;
 
-class MapBuilder {
-    
-    def map = [:]
+import org.age.compute.mas.action.Action;
 
-    def propertyMissing(String name, value) {
-        map[name] = value
-    }
+import java.util.List;
 
-    def propertyMissing(String name) {
-        map[name]
-    }
+/**
+ * Workplace descriptor contains the configuration of a workplace.
+ */
+public interface WorkplaceDescriptor {
 
-    def getMap() {
-        return Collections.unmodifiableMap(map)
-    }
-    
+	List<AgentDescriptor> agents();
+
+	List<Class<Action>> actions();
 }

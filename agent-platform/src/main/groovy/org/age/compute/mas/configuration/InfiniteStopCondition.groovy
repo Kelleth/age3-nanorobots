@@ -17,30 +17,19 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package pl.edu.agh.toik.human.body.configuration;
+package org.age.compute.mas.configuration
 
-import org.age.compute.mas.action.Action;
-import org.age.compute.mas.agent.AgentBehavior;
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+class InfiniteStopCondition implements StopCondition {
 
-/**
- * Agent descriptor contains the configuration of an agent.
- */
-public interface AgentDescriptor {
+    private static final Logger logger = LoggerFactory.getLogger(InfiniteStopCondition)
 
-	Class<? extends AgentBehavior> agentClass();
-
-	String name();
-
-	Optional<AgentDescriptor> parent();
-
-	List<AgentDescriptor> children();
-
-	Map<String, Object> settings();
-
-	List<Class<Action>> actions();
+    @Override
+    boolean isReached() {
+        logger.warn("Using infinite stop condition!")
+        return false
+    }
 
 }

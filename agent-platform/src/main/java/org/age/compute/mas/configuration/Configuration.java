@@ -17,18 +17,23 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package pl.edu.agh.toik.human.body.configuration;
-
-import org.age.compute.mas.action.Action;
+package org.age.compute.mas.configuration;
 
 import java.util.List;
 
 /**
- * Workplace descriptor contains the configuration of a workplace.
+ * Describes the Multi-agent System configuration.
  */
-public interface WorkplaceDescriptor {
+public interface Configuration {
 
-	List<AgentDescriptor> agents();
+	/**
+	 * Returns the (non-null) list of workplaces.
+	 */
+	List<WorkplaceDescriptor> workplaces();
 
-	List<Class<Action>> actions();
+	/**
+	 * Returns the (non-null) stop condition.
+	 */
+	StopCondition stopCondition();
+
 }

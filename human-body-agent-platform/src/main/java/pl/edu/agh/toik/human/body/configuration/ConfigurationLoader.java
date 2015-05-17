@@ -28,7 +28,8 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 
-import static org.age.compute.mas.util.TimeMeasurement.measureTime;
+import static pl.edu.agh.toik.human.body.util.TimeMeasurement.measureTime;
+
 
 public final class ConfigurationLoader {
 

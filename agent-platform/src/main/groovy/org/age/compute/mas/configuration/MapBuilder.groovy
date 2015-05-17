@@ -17,17 +17,22 @@
  * along with AgE.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package pl.edu.agh.toik.human.body.configuration;
+package org.age.compute.mas.configuration
 
-/**
- * Stop condition defines when the computation should be terminated.
- */
-@FunctionalInterface
-public interface StopCondition {
+class MapBuilder {
+    
+    def map = [:]
 
-	/**
-	 * Returns true if the stop condition has been reached, false otherwise.
-	 */
-	boolean isReached();
+    def propertyMissing(String name, value) {
+        map[name] = value
+    }
 
+    def propertyMissing(String name) {
+        map[name]
+    }
+
+    def getMap() {
+        return Collections.unmodifiableMap(map)
+    }
+    
 }

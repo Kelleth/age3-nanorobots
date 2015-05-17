@@ -4,13 +4,12 @@ apply plugin: 'maven-publish'
 
 dependencies {
     compile project(':')
-    compile project(':agent-platform')
     compile 'org.javassist:javassist:+'
     compile 'org.codehaus.groovy:groovy-all:+'
 }
 
 task console(dependsOn: 'classes') << {
-    def classpath = sourceSets.main.runtimeClasspath + configurations.runtime
+    def classpath = sourceSets.main.runtimeClasspath// + configurations.runtime
 
     def command = [
             'java',

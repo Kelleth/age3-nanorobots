@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Random;
 
 import static java.util.Objects.requireNonNull;
-import static org.age.compute.mas.util.TimeMeasurement.measureTime;
+import static pl.edu.agh.toik.human.body.util.TimeMeasurement.measureTime;
 
 /**
  * Created by Kuba on 17.05.15.
