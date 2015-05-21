@@ -1,50 +1,73 @@
 package pl.edu.agh.toik.human.body;
 
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import pl.edu.agh.toik.human.body.agent.AgentBehavior;
-import pl.edu.agh.toik.human.body.agent.Coordinates;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
 import java.util.Random;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import pl.edu.agh.toik.human.body.agent.AgentBehavior;
+import pl.edu.agh.toik.human.body.agent.Coordinates;
 
 /**
  * Created by Ewelina on 2015-05-09.
  */
 public class HumanTissueAgent extends AgentBehavior {
+	private static final Logger log = LoggerFactory.getLogger(HumanTissueAgent.class);
 
-    private double calcium = new Random().nextDouble();
+	private double calcium = new Random().nextDouble();
 
-    private Coordinates position;
+	private Coordinates position;
 
-    private static final Logger log = LoggerFactory.getLogger(HumanTissueAgent.class);
+	private Buffer buffer;
 
-    public HumanTissueAgent(Coordinates position) {
-        this.position = position;
-    }
+	public HumanTissueAgent(Coordinates position) {
+		this.setPosition(position);
+	}
 
-    @Override
-    public void doStep(int stepNumber) {
-        log.debug("Step {}.", stepNumber);
-        computeCalcium();
-    }
+	@Override
+	public void doStep(int stepNumber) {
+		log.debug("Step {}.", stepNumber);
+		computeCalcium();
+		writeDataToBuffer();
+		log.debug("Wrote to buffer: {}.", calcium);
+	}
 
-    private void computeCalcium() {
-        this.calcium = new Random().nextDouble();
-    }
+	private void writeDataToBuffer() {
+		buffer.addData(calcium);
+	}
 
-    public double getCalcium() {
-        return calcium;
-    }
+	private void computeCalcium() {
+		this.calcium = new Random().nextDouble();
+	}
 
-    public void setCalcium(double calcium) {
-        this.calcium = calcium;
-    }
+	public double getCalcium() {
+		return calcium;
+	}
 
-    @Override
-    public String toString() {
-        return toStringHelper(this).add("calcium", calcium).toString();
-    }
+	public void setCalcium(double calcium) {
+		this.calcium = calcium;
+	}
+
+	@Override
+	public String toString() {
+		return toStringHelper(this).add("calcium", calcium).toString();
+	}
+
+	public Coordinates getPosition() {
+		return position;
+	}
+
+	public void setPosition(Coordinates position) {
+		this.position = position;
+	}
+
+	public Buffer getBuffer() {
+		return buffer;
+	}
+
+	public void setBuffer(Buffer buffer) {
+		this.buffer = buffer;
+	}
 }

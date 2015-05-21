@@ -19,27 +19,18 @@
 
 package pl.edu.agh.toik.human.body.configuration;
 
-import pl.edu.agh.toik.human.body.Action;
-
-import java.util.List;
 import java.util.Map;
+
+import pl.edu.agh.toik.human.body.agent.AgentBehavior;
 
 /**
  * Agent descriptor contains the configuration of an agent.
  */
 public interface AgentDescriptor {
 
-    enum AgentClass {
-        BLOODSTREAM_AGENT,
-        HUMAN_TISSUE_AGENT
-    }
+	Class<? extends AgentBehavior> agentClass();
 
-    AgentClass agentClass();
+	String name();
 
-    String name();
-
-    Map<String, Object> settings();
-
-    List<Class<Action>> actions();
-
+	Map<String, Object> settings();
 }

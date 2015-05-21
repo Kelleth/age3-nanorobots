@@ -20,16 +20,17 @@
 package pl.edu.agh.toik.human.body.configuration
 
 import groovy.transform.EqualsAndHashCode
-import pl.edu.agh.toik.human.body.Action
+import pl.edu.agh.toik.human.body.Buffor
+import pl.edu.agh.toik.human.body.agent.AgentBehavior
+
 
 @EqualsAndHashCode
 class AgentDescriptorDsl implements AgentDescriptor {
 
     private Map<String, Object> settings = [:]
 
-    AgentDescriptor.AgentClass agentClass
+    Class<? extends AgentBehavior> agentClass
     String name = null
-    List<Class<Action>> actions = []
     int quantity = 1
 
     AgentDescriptorDsl() {
@@ -58,10 +59,11 @@ class AgentDescriptorDsl implements AgentDescriptor {
         return "Agent(" + agentClass + ")"
     }
 
-    @Override
-    AgentDescriptor.AgentClass agentClass() {
+     @Override
+    Class<? extends AgentBehavior> agentClass() {
         return agentClass
     }
+
 
     @Override
     String name() {
@@ -73,10 +75,6 @@ class AgentDescriptorDsl implements AgentDescriptor {
         return settings
     }
 
-    @Override
-    List<Class<Action>> actions() {
-        return actions
-    }
 
     void setSettings(Map<String, Object> settings) {
         this.settings = settings
