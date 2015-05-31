@@ -20,7 +20,6 @@
 package pl.edu.agh.toik.human.body.configuration
 
 import groovy.transform.EqualsAndHashCode
-import pl.edu.agh.toik.human.body.Buffor
 import pl.edu.agh.toik.human.body.agent.AgentBehavior
 
 
