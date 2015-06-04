@@ -48,4 +48,13 @@ class ConfigurationDsl implements Configuration {
     List<AgentDescriptor> agents() {
         return agents;
     }
+
+    void repeat(long times, Closure block) {
+        block.delegate = this
+        block.resolveStrategy = Closure.DELEGATE_FIRST
+
+        for (long i = 0; i < times; ++i) {
+            block(i)
+        }
+    }
 }
