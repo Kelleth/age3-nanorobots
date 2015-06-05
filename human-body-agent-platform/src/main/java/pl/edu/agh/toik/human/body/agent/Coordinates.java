@@ -32,6 +32,10 @@ public class Coordinates {
         return Math.sqrt(Math.pow(xCoordinate - coordinates.getxCoordinate(), 2) + Math.pow(yCoordinate - coordinates.getyCoordinate(), 2));
     }
 
+    public static boolean areCloseCoordinates(Coordinates firstCoordinates, Coordinates secondCoordinates) {
+        return Math.abs(firstCoordinates.getyCoordinate() - secondCoordinates.getyCoordinate()) < 0.5;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
