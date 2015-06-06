@@ -33,7 +33,7 @@ public class Coordinates {
     }
 
     public static boolean areCloseCoordinates(Coordinates firstCoordinates, Coordinates secondCoordinates) {
-        return Math.abs(firstCoordinates.getyCoordinate() - secondCoordinates.getyCoordinate()) < 0.5;
+        return Math.abs(firstCoordinates.getyCoordinate() - secondCoordinates.getyCoordinate()) < 0.25;
     }
 
     @Override

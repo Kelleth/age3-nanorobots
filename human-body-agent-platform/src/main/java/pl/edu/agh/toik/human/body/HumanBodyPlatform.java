@@ -45,13 +45,16 @@ public class HumanBodyPlatform implements Runnable {
      */
     // FIXME: return buffer with close enough coordinates, not only equal to agent coordinates
     static Buffer getCloseDataBufferIfExists(Coordinates agentCoordinates) {
-        for (Buffer buffer : buffers) {
-            if (Coordinates.areCloseCoordinates(agentCoordinates, buffer.getPosition())) {
-                log.debug("Bloodstream agent gets close buffer with coordinates [{}, {}]", agentCoordinates.getxCoordinate(), agentCoordinates.getyCoordinate());
-                return buffer;
-            }
+        final double xCoordinate = agentCoordinates.getxCoordinate();
+        final Buffer nearestBufferBefore = buffers.get((int) xCoordinate);
+        final Buffer nearestBufferAfter = buffers.get((int) xCoordinate + 1);
+        if (Coordinates.areCloseCoordinates(nearestBufferBefore.getPosition(), agentCoordinates)) {
+            log.debug("Bloodstream agent gets close buffer with coordinates [{}, {}]", agentCoordinates.getxCoordinate(), agentCoordinates.getyCoordinate());
+            return nearestBufferBefore;
+        } else if (Coordinates.areCloseCoordinates(nearestBufferAfter.getPosition(), agentCoordinates)) {
+            log.debug("Bloodstream agent gets close buffer with coordinates [{}, {}]", agentCoordinates.getxCoordinate(), agentCoordinates.getyCoordinate());
+            return nearestBufferAfter;
         }
-
         return null;
     }
 
@@ -134,43 +137,26 @@ public class HumanBodyPlatform implements Runnable {
                     behavior.doStep(step);
                 }
                 step++;
+                try {
+                    Thread.sleep(1500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         });
         humanTissueThread.setName("HumanTissueAgentsThread");
         humanTissueThread.start();
-        /*for (int step = 0; step < 100; step++) {
-            behavior.doStep(step);
-        }*/
 
-        final int agentsPerThread = bloodstreamAgents.size() / bloodstreamThreadCount;
-        for (int i = 0; i < bloodstreamThreadCount - 1; i++) {
-            final int from = i * agentsPerThread;
-            final int to = from + agentsPerThread;
-            log.debug("BloodstreamThread {} has agents from {} to {}", i, from, to);
-            final Thread bloodstreamThread = new Thread(() -> {
-                int step = 0;
-                while (!Thread.currentThread().isInterrupted()) {
-                    for (AgentBehavior behavior : bloodstreamAgents.subList(from, to)) {
-                        behavior.doStep(step);
-                    }
-                    step++;
-                }
-            });
-            bloodstreamThread.setName("BloodstreamAgentsThread-" + i);
-            bloodstreamThread.start();
-        }
-        final int bloodstreamCount = bloodstreamAgents.size();
-        log.debug("BloodstreamThread {} has agents from {} to {}", bloodstreamThreadCount, bloodstreamCount - agentsPerThread,
-                bloodstreamCount);
         final Thread bloodstreamThread = new Thread(() -> {
             int step = 0;
             while (!Thread.currentThread().isInterrupted()) {
-                for (AgentBehavior behavior : bloodstreamAgents.subList(bloodstreamCount - agentsPerThread, bloodstreamCount)) {
-                    behavior.doStep(step++);
+                for (AgentBehavior behavior : bloodstreamAgents) {
+                    behavior.doStep(step);
                 }
+                step++;
             }
         });
-        bloodstreamThread.setName("BloodstreamAgentsThread-" + bloodstreamThreadCount);
+        bloodstreamThread.setName("BloodstreamAgentsThread");
         bloodstreamThread.start();
     }
 
