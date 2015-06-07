@@ -53,4 +53,8 @@ public class Buffer {
 		this.data += data;
 		log.debug("Buffer added data: {}.", this.data);
 	}
+
+	public synchronized Double getData() {
+		return data;
+	}
 }

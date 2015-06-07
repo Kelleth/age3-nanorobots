@@ -27,10 +27,8 @@ public class BloodstreamAgent extends AgentBehavior {
     @Override
     public void doStep(int stepNumber) {
         log.debug("Step {}.", stepNumber);
-        log.debug("Collected calcium {}.", this.toString());
         getDataFromBuffer();
         move();
-        log.debug("Collected calcium after clearing buffer{}.", this.toString());
     }
 
     // FIXME : agent currently changes only y coordinate (x coordinate is set to zero)
@@ -57,8 +55,10 @@ public class BloodstreamAgent extends AgentBehavior {
     private void getDataFromBuffer() {
         final Buffer buffer = HumanBodyPlatform.getCloseDataBufferIfExists(position);
         // currently it means that agent is located at the same position as buffer is
-        if (buffer != null) {
+        if (buffer != null && buffer.getData() > 0.0) {
+            log.debug("Collected calcium {}.", this.toString());
             collectedCalcium += buffer.getAndClearData();
+            log.debug("Collected calcium after clearing buffer{}.", this.toString());
         }
     }
 

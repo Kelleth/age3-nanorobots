@@ -27,15 +27,11 @@ public class HumanBodyPlatform implements Runnable {
 
     private final List<AgentBehavior> humanTissueAgents = new ArrayList<>();
     private final List<AgentBehavior> bloodstreamAgents = new ArrayList<>();
-    private final WorkplaceBehavior behavior = new WorkplaceBehavior();
 
     private final Random random = new Random();
     private static List<Buffer> buffers;
 
     public static final double maxX = 1000.0;
-
-    private final int bloodstreamThreadCount = 8;
-
 
     /**
      * Returns close data buffer or null if not exists
@@ -70,18 +66,6 @@ public class HumanBodyPlatform implements Runnable {
 
         this.configuration = requireNonNull(configuration);
         agents = measureTime(() -> instantiateAgents(configuration.agents()), "Agents created in: ");
-    }
-
-    public class WorkplaceBehavior extends AgentBehavior {
-        @Override
-        public void doStep(final int stepNumber) {
-            log.debug("Workplace step on agents {}.", stepNumber);
-
-            for (final AgentBehavior agent : agents) {
-                agent.doStep(stepNumber);
-            }
-
-        }
     }
 
     private List<AgentBehavior> instantiateAgents(List<AgentDescriptor> agents) {
