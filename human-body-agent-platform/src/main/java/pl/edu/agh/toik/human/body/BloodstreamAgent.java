@@ -67,9 +67,9 @@ public class BloodstreamAgent extends AgentBehavior {
 	 * Writes data to summary buffer designed for {@link pl.edu.agh.toik.human.body.DataSummaryAgent}
 	 */
 	private void writeDataToSummaryBuffer() {
-		if(Coordinates.areCloseCoordinates(position, HumanBodyPlatform.dataSummaryAgent.getPosition())) {
+		if(Coordinates.areCloseToSummaryBufferCoordinates(position, HumanBodyPlatform.dataSummaryAgent.getPosition())) {
 			HumanBodyPlatform.dataSummaryAgent.getBuffer().addData(this.collectedCalcium);
-			log.debug("Data written to total summary buffor : {}", collectedCalcium);
+			log.debug("Data written to total summary buffer : {}", collectedCalcium);
 			collectedCalcium = 0;
 		}
 	}

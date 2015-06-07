@@ -36,6 +36,10 @@ public class Coordinates {
         return Math.abs(firstCoordinates.getyCoordinate() - secondCoordinates.getyCoordinate()) < 0.25;
     }
 
+    public static boolean areCloseToSummaryBufferCoordinates(Coordinates coordinates, Coordinates bufferCoords) {
+        return Math.abs(coordinates.getyCoordinate() - bufferCoords.getyCoordinate()) < 0.5;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

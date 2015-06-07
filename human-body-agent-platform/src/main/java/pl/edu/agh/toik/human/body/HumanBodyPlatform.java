@@ -148,6 +148,16 @@ public class HumanBodyPlatform implements Runnable {
         });
         bloodstreamThread.setName("BloodstreamAgentsThread");
         bloodstreamThread.start();
+
+        final Thread dataSummaryThread = new Thread(() -> {
+            int step = 0;
+            while (!Thread.currentThread().isInterrupted()) {
+                dataSummaryAgent.doStep(step);
+                step++;
+            }
+        });
+        dataSummaryThread.setName("DataSummaryAgentThread");
+        dataSummaryThread.start();
     }
 
     public Configuration getConfiguration() {
