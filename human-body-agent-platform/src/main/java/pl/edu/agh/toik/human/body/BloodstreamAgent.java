@@ -28,6 +28,7 @@ public class BloodstreamAgent extends AgentBehavior {
     public void doStep(int stepNumber) {
         log.debug("Step {}.", stepNumber);
         getDataFromBuffer();
+		writeDataToSummaryBuffer();
         move();
     }
 
@@ -62,7 +63,19 @@ public class BloodstreamAgent extends AgentBehavior {
         }
     }
 
-    public double getCollectedCalcium() {
+	/**
+	 * Writes data to summary buffer designed for {@link pl.edu.agh.toik.human.body.DataSummaryAgent}
+	 */
+	private void writeDataToSummaryBuffer() {
+		if(Coordinates.areCloseCoordinates(position, HumanBodyPlatform.dataSummaryAgent.getPosition())) {
+			HumanBodyPlatform.dataSummaryAgent.getBuffer().addData(this.collectedCalcium);
+			log.debug("Data written to total summary buffor : {}", collectedCalcium);
+			collectedCalcium = 0;
+		}
+	}
+
+
+	public double getCollectedCalcium() {
         return collectedCalcium;
     }
 

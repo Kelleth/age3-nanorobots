@@ -25,6 +25,8 @@ public class HumanBodyPlatform implements Runnable {
 
     private final List<AgentBehavior> agents;
 
+	public static DataSummaryAgent dataSummaryAgent;
+
     private final List<AgentBehavior> humanTissueAgents = new ArrayList<>();
     private final List<AgentBehavior> bloodstreamAgents = new ArrayList<>();
 
@@ -76,7 +78,11 @@ public class HumanBodyPlatform implements Runnable {
             //Coordinates position = new Coordinates(random.nextDouble() * 20, random.nextDouble() * 20);
             final Coordinates position = new Coordinates(0.0, random.nextDouble() * maxX);
 
-            if (desc.agentClass().equals(BloodstreamAgent.class)) {
+			if(desc.agentClass().equals(DataSummaryAgent.class)) {
+				Buffer buffer = new Buffer(position);
+				this.dataSummaryAgent = new DataSummaryAgent(position, buffer);
+				builder.add(dataSummaryAgent);
+			} else if (desc.agentClass().equals(BloodstreamAgent.class)) {
                 final AgentBehavior agent = new BloodstreamAgent(position);
                 bloodstreamAgents.add(agent);
 //				((BloodstreamAgent) agent).setBuffers(buffers);
