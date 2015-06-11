@@ -1,6 +1,7 @@
 package pl.edu.agh.toik.human.body.agent;
 
 /**
+ * Class represents agent coordinates
  * Created by Kuba on 17.05.15.
  */
 public class Coordinates {
@@ -28,14 +29,27 @@ public class Coordinates {
         this.yCoordinate = yCoordinate;
     }
 
+    /**
+     * Method returns distance to another coordinates
+     * @param coordinates - coordinates to find distance to
+     * @return - calculated distance
+     */
     public double calculateDistanceTo(Coordinates coordinates) {
         return Math.sqrt(Math.pow(xCoordinate - coordinates.getxCoordinate(), 2) + Math.pow(yCoordinate - coordinates.getyCoordinate(), 2));
     }
 
+    /**
+     * Checks whether two coordinates are close to each other ( used to check whether agent is close to buffer )
+     * @return - true if coordinates ale close to each other ( less than 0.25 )
+     */
     public static boolean areCloseCoordinates(Coordinates firstCoordinates, Coordinates secondCoordinates) {
         return Math.abs(firstCoordinates.getyCoordinate() - secondCoordinates.getyCoordinate()) < 0.25;
     }
 
+    /**
+     * Checks whether coordinates are close to data summary buffer coordinates
+     * @return - true if coordinates ale close to data summary buffer ( less than 0.5 )
+     */
     public static boolean areCloseToSummaryBufferCoordinates(Coordinates coordinates, Coordinates bufferCoords) {
         return Math.abs(coordinates.getyCoordinate() - bufferCoords.getyCoordinate()) < 0.5;
     }

@@ -16,32 +16,36 @@ import static java.util.Objects.requireNonNull;
 import static pl.edu.agh.toik.human.body.util.TimeMeasurement.measureTime;
 
 /**
+ * Main platform container, initializes agents, informs agents about buffers location
  * Created by Kuba on 17.05.15.
  */
 public class HumanBodyPlatform implements Runnable {
     private static final Logger log = LoggerFactory.getLogger(HumanBodyPlatform.class);
 
+    /** Configuration provided by user object */
     private final Configuration configuration;
 
+    /** list of all created agents (of different types) */
     private final List<AgentBehavior> agents;
 
 	public static DataSummaryAgent dataSummaryAgent;
-
     private final List<AgentBehavior> humanTissueAgents = new ArrayList<>();
     private final List<AgentBehavior> bloodstreamAgents = new ArrayList<>();
 
     private final Random random = new Random();
+
+    /** data buffers */
     private static List<Buffer> buffers;
 
+    /** length of an y axis at which agents can move */
     public static final double maxX = 1000.0;
 
     /**
-     * Returns close data buffer or null if not exists
+     * Returns data buffer located close enough to an agent or null if not exists
      *
      * @param agentCoordinates - current coordinates of agent
      * @return - data buffer or null
      */
-    // FIXME: return buffer with close enough coordinates, not only equal to agent coordinates
     static Buffer getCloseDataBufferIfExists(Coordinates agentCoordinates) {
         final double xCoordinate = agentCoordinates.getxCoordinate();
         final Buffer nearestBufferBefore = buffers.get((int) xCoordinate);
@@ -58,6 +62,7 @@ public class HumanBodyPlatform implements Runnable {
 
     public HumanBodyPlatform(final Configuration configuration) {
         buffers = new ArrayList<>();
+
         // assumption: buffers are situated on [0, x: int] coordinates, agents (bloodstream) are moving along the path : [0, x: int]
         // maxX number of evenly located buffers
         for (int i = 0; i <= (int) maxX; i++) {
@@ -70,6 +75,11 @@ public class HumanBodyPlatform implements Runnable {
         agents = measureTime(() -> instantiateAgents(configuration.agents()), "Agents created in: ");
     }
 
+    /**
+     * Initializes agents
+     * @param agents - list of agents from configuration
+     * @return - initialized agents list
+     */
     private List<AgentBehavior> instantiateAgents(List<AgentDescriptor> agents) {
         log.debug("Instantiating {} workplaces.", agents.size());
         final ImmutableList.Builder<AgentBehavior> builder = ImmutableList.builder();
@@ -99,6 +109,11 @@ public class HumanBodyPlatform implements Runnable {
         return builder.build();
     }
 
+    /**
+     * finds closest buffer for each human tissue agent
+     * @param position - position of a human tissue agent
+     * @return - closest buffer
+     */
     // finds closest buffer for each human tissue agent
     private Buffer getClosestDataBuffer(Coordinates position) {
         int chosenBufferNo = 0;

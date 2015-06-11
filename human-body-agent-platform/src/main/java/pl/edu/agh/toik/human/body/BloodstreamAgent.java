@@ -10,15 +10,18 @@ import java.util.Random;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 /**
+ * Agent floating in the blood, getting data from tissue agents and transfering it to data summary agent
  * Created by Ewelina on 2015-05-09.
  */
 public class BloodstreamAgent extends AgentBehavior {
 
+    /** Calcium collected from buffer */
     private double collectedCalcium = 0;
     private static final Logger log = LoggerFactory.getLogger(BloodstreamAgent.class);
+
+    /** Current position of an agent */
     private Coordinates position;
     private final Random random = new Random();
-//	private List<Buffer> buffers;
 
     public BloodstreamAgent(Coordinates position) {
         this.setPosition(position);
@@ -32,7 +35,9 @@ public class BloodstreamAgent extends AgentBehavior {
         move();
     }
 
-    // FIXME : agent currently changes only y coordinate (x coordinate is set to zero)
+    /**
+     * changes agent y coordinate (x is always set to 0 in current solution)
+      */
     private void move() {
         final boolean moveForward = random.nextBoolean();
         final double currentYCoordinate = this.position.getyCoordinate();
@@ -53,6 +58,9 @@ public class BloodstreamAgent extends AgentBehavior {
         log.debug("Bloodstream agent moves to position [{}, {}]", position.getxCoordinate(), position.getyCoordinate());
     }
 
+    /**
+     * Gets data from buffer
+     */
     private void getDataFromBuffer() {
         final Buffer buffer = HumanBodyPlatform.getCloseDataBufferIfExists(position);
         // currently it means that agent is located at the same position as buffer is
@@ -87,14 +95,6 @@ public class BloodstreamAgent extends AgentBehavior {
     public String toString() {
         return toStringHelper(this).add("collectedCalcium", collectedCalcium).toString();
     }
-
-//	public List<Buffer> getBuffers() {
-//		return buffers;
-//	}
-//
-//	public void setBuffers(List<Buffer> buffers) {
-//		this.buffers = buffers;
-//	}
 
     public Coordinates getPosition() {
         return position;
