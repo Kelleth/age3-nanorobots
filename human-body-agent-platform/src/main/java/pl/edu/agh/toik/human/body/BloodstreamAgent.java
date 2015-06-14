@@ -15,11 +15,15 @@ import static com.google.common.base.MoreObjects.toStringHelper;
  */
 public class BloodstreamAgent extends AgentBehavior {
 
-    /** Calcium collected from buffer */
+    /**
+     * Calcium collected from buffer
+     */
     private double collectedCalcium = 0;
     private static final Logger log = LoggerFactory.getLogger(BloodstreamAgent.class);
 
-    /** Current position of an agent */
+    /**
+     * Current position of an agent
+     */
     private Coordinates position;
     private final Random random = new Random();
 
@@ -31,13 +35,13 @@ public class BloodstreamAgent extends AgentBehavior {
     public void doStep(int stepNumber) {
         log.debug("Step {}.", stepNumber);
         getDataFromBuffer();
-		writeDataToSummaryBuffer();
+        writeDataToSummaryBuffer();
         move();
     }
 
     /**
      * changes agent y coordinate (x is always set to 0 in current solution)
-      */
+     */
     private void move() {
         final boolean moveForward = random.nextBoolean();
         final double currentYCoordinate = this.position.getyCoordinate();
@@ -59,11 +63,10 @@ public class BloodstreamAgent extends AgentBehavior {
     }
 
     /**
-     * Gets data from buffer
+     * Retrieves data from data buffer closest to the agent.
      */
     private void getDataFromBuffer() {
         final Buffer buffer = HumanBodyPlatform.getCloseDataBufferIfExists(position);
-        // currently it means that agent is located at the same position as buffer is
         if (buffer != null && buffer.getData() > 0.0) {
             log.debug("Collected calcium {}.", this.toString());
             collectedCalcium += buffer.getAndClearData();
@@ -71,19 +74,19 @@ public class BloodstreamAgent extends AgentBehavior {
         }
     }
 
-	/**
-	 * Writes data to summary buffer designed for {@link pl.edu.agh.toik.human.body.DataSummaryAgent}
-	 */
-	private void writeDataToSummaryBuffer() {
-		if(Coordinates.areCloseToSummaryBufferCoordinates(position, HumanBodyPlatform.dataSummaryAgent.getPosition())) {
-			HumanBodyPlatform.dataSummaryAgent.getBuffer().addData(this.collectedCalcium);
-			log.debug("Data written to total summary buffer : {}", collectedCalcium);
-			collectedCalcium = 0;
-		}
-	}
+    /**
+     * Writes data to summary buffer designed for {@link pl.edu.agh.toik.human.body.DataSummaryAgent}
+     */
+    private void writeDataToSummaryBuffer() {
+        if (Coordinates.areCloseToSummaryBufferCoordinates(position, HumanBodyPlatform.dataSummaryAgent.getPosition())) {
+            HumanBodyPlatform.dataSummaryAgent.getBuffer().addData(this.collectedCalcium);
+            log.debug("Data written to total summary buffer : {}", collectedCalcium);
+            collectedCalcium = 0;
+        }
+    }
 
 
-	public double getCollectedCalcium() {
+    public double getCollectedCalcium() {
         return collectedCalcium;
     }
 

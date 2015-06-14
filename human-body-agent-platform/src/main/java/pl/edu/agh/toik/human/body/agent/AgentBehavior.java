@@ -24,9 +24,6 @@ import java.util.Map;
 
 /**
  * Class that describes agent behavior.
- * <p>
- * In order to instantiate a new agent based on a behavior, the programmer needs to use {@link
- * org.age.compute.mas.agent.internal.AgentBuilder}.
  */
 public abstract class AgentBehavior {
 
@@ -40,10 +37,6 @@ public abstract class AgentBehavior {
 
     /**
      * Returns settings set for an agent.
-     * <p>
-     * This implementations does nothing - it is handled by a proxy class.
-     * In case of wrong usage (when the class was not created by {@link org.age.compute.mas.agent.internal.AgentBuilder}
-     * an empty map is returned.
      */
     protected Map<String, Object> settings() {
         return Collections.emptyMap();

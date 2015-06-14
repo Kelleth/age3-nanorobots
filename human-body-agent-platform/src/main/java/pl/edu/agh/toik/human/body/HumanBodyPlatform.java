@@ -22,22 +22,30 @@ import static pl.edu.agh.toik.human.body.util.TimeMeasurement.measureTime;
 public class HumanBodyPlatform implements Runnable {
     private static final Logger log = LoggerFactory.getLogger(HumanBodyPlatform.class);
 
-    /** Configuration provided by user object */
+    /**
+     * Configuration provided by user object
+     */
     private final Configuration configuration;
 
-    /** list of all created agents (of different types) */
+    /**
+     * List of all created agents (of different types)
+     */
     private final List<AgentBehavior> agents;
 
-	public static DataSummaryAgent dataSummaryAgent;
+    public static DataSummaryAgent dataSummaryAgent;
     private final List<AgentBehavior> humanTissueAgents = new ArrayList<>();
     private final List<AgentBehavior> bloodstreamAgents = new ArrayList<>();
 
     private final Random random = new Random();
 
-    /** data buffers */
+    /**
+     * Data buffers
+     */
     private static List<Buffer> buffers;
 
-    /** length of an y axis at which agents can move */
+    /**
+     * Length of an y axis at which agents can move
+     */
     public static final double maxX = 1000.0;
 
     /**
@@ -77,6 +85,7 @@ public class HumanBodyPlatform implements Runnable {
 
     /**
      * Initializes agents
+     *
      * @param agents - list of agents from configuration
      * @return - initialized agents list
      */
@@ -85,17 +94,15 @@ public class HumanBodyPlatform implements Runnable {
         final ImmutableList.Builder<AgentBehavior> builder = ImmutableList.builder();
         for (int i = 0; i < agents.size(); i++) {
             final AgentDescriptor desc = agents.get(i);
-            //Coordinates position = new Coordinates(random.nextDouble() * 20, random.nextDouble() * 20);
             final Coordinates position = new Coordinates(0.0, random.nextDouble() * maxX);
 
-			if(desc.agentClass().equals(DataSummaryAgent.class)) {
-				Buffer buffer = new Buffer(position);
-				this.dataSummaryAgent = new DataSummaryAgent(position, buffer);
-				builder.add(dataSummaryAgent);
-			} else if (desc.agentClass().equals(BloodstreamAgent.class)) {
+            if (desc.agentClass().equals(DataSummaryAgent.class)) {
+                Buffer buffer = new Buffer(position);
+                this.dataSummaryAgent = new DataSummaryAgent(position, buffer);
+                builder.add(dataSummaryAgent);
+            } else if (desc.agentClass().equals(BloodstreamAgent.class)) {
                 final AgentBehavior agent = new BloodstreamAgent(position);
                 bloodstreamAgents.add(agent);
-//				((BloodstreamAgent) agent).setBuffers(buffers);
                 builder.add(agent);
 
             } else if (desc.agentClass().equals(HumanTissueAgent.class)) {
@@ -110,11 +117,11 @@ public class HumanBodyPlatform implements Runnable {
     }
 
     /**
-     * finds closest buffer for each human tissue agent
+     * Finds closest buffer for each human tissue agent
+     *
      * @param position - position of a human tissue agent
      * @return - closest buffer
      */
-    // finds closest buffer for each human tissue agent
     private Buffer getClosestDataBuffer(Coordinates position) {
         int chosenBufferNo = 0;
         Buffer closestBuffer = buffers.get(0);

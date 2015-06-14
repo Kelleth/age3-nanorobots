@@ -13,13 +13,19 @@ public class DataSummaryAgent extends AgentBehavior {
 
     private static final Logger log = LoggerFactory.getLogger(DataSummaryAgent.class);
 
-    /** total collected calcium value */
+    /**
+     * Total collected calcium value
+     */
     private double totalCalcium = 0;
 
-    /** current position of agent */
+    /**
+     * Current position of agent
+     */
     private Coordinates position;
 
-    /** data buffer - agent reads data from it */
+    /**
+     * Data buffer - agent reads data from it
+     */
     private Buffer buffer;
 
     public DataSummaryAgent(Coordinates position, Buffer buffer) {
@@ -29,7 +35,7 @@ public class DataSummaryAgent extends AgentBehavior {
 
     @Override
     public void doStep(int stepNumber) {
-        log.debug("Step {}.", stepNumber);;
+        log.debug("Step {}.", stepNumber);
         getDataFromBuffer();
         log.debug("Total calcium collected from buffer: {}.", totalCalcium);
     }
